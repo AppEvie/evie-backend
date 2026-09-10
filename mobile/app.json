@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "Evie",
+    "slug": "secretaria",
+    "scheme": "evie",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/app-icon.png",
+    "splash": {
+      "backgroundColor": "#0B2545"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.thiagofreire.evie",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Precisamos do microfone para ouvir seus comandos de voz.",
+        "NSSpeechRecognitionUsageDescription": "Usamos reconhecimento de voz para entender seus comandos.",
+        "NSCalendarsUsageDescription": "Precisamos acessar sua agenda para criar os eventos que você pedir.",
+        "NSContactsUsageDescription": "Usado para sugerir destinatários de email.",
+        "NSCameraUsageDescription": "Usado para fotografar documentos, faturas e boletos.",
+        "NSPhotoLibraryUsageDescription": "Usado para escolher fotos de documentos já salvas no seu aparelho."
+      }
+    },
+    "android": {
+      "package": "com.thiagofreire.evie",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon-adaptive-fg.png",
+        "backgroundColor": "#0B2545"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Precisamos acessar sua agenda para criar os eventos que você pedir."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Precisamos do microfone para ouvir seus comandos de voz.",
+          "speechRecognitionPermission": "Usamos reconhecimento de voz para entender seus comandos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Usado para fotografar documentos, faturas e boletos.",
+          "photosPermission": "Usado para escolher fotos de documentos já salvas no seu aparelho."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/app-icon.png",
+          "color": "#0B2545"
+        }
+      ],
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": ["image/*", "application/pdf"],
+          "androidMultiIntentFilters": ["image/*"]
+        }
+      ]
+    ]
+  }
+}
