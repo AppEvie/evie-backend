@@ -1,7 +1,17 @@
-// URL pública do backend, gerada pelo ngrok.
-// Toda vez que você reiniciar o ngrok (ngrok http 3000), uma URL NOVA é gerada
-// no plano gratuito — se isso acontecer, atualize a linha abaixo com a nova URL.
-export const BACKEND_URL = 'https://gargle-trustless-groggy.ngrok-free.dev';
+// URL pública do backend, hospedado no Render — fica no ar sozinho,
+// sem depender do computador nem de terminais abertos.
+export const BACKEND_URL = 'https://evie-backend-olro.onrender.com';
+
+// No plano gratuito do Render, o servidor "dorme" depois de um tempo sem
+// uso, e demora de 30 a 60 segundos pra acordar na próxima chamada. Essa
+// função manda um pedido leve assim que o app abre, "acordando" o
+// servidor de antemão — sem travar nada, sem esperar a resposta, e sem
+// avisar erro se falhar (é só uma tentativa de adiantar o trabalho).
+export function acordarServidor() {
+  fetch(`${BACKEND_URL}/vozes-disponiveis`).catch(() => {
+    // sem problema se falhar — é só uma tentativa de "esquentar" o servidor
+  });
+}
 
 // O Android às vezes deixa uma conexão de rede "presa"/corrompida logo
 // depois de abrir outra tela nativa por cima do app (como a interface de
@@ -13,12 +23,18 @@ async function fetchComNovaTentativa(url, opcoes, tentativas = 4) {
     try {
       return await fetch(url, opcoes);
     } catch (e) {
+      const mensagem = String(e?.message || e);
       const ehErroDeConexao =
-        String(e?.message || e).includes('TLS') || String(e?.message || e).includes('fetch failed');
+        mensagem.includes('TLS') || mensagem.includes('fetch failed') ||
+        mensagem.includes('Network request failed') || mensagem.includes('timed out') ||
+        mensagem.includes('Aborted');
       const ultimaTentativa = i === tentativas - 1;
       if (!ehErroDeConexao || ultimaTentativa) throw e;
-      const pausa = 800 * (i + 1); // 800ms, depois 1600ms, depois 2400ms
-      console.log(`[api] erro de conexão (${e?.message || e}), tentando de novo em ${pausa}ms...`);
+      // Pausa mais generosa — cobre tanto instabilidade de rede quanto o
+      // servidor gratuito "acordando" depois de ficar inativo (pode levar
+      // até 1 minuto na primeira chamada).
+      const pausa = 3000 * (i + 1); // 3s, depois 6s, depois 9s
+      console.log(`[api] erro de conexão (${mensagem}), tentando de novo em ${pausa}ms...`);
       await new Promise((r) => setTimeout(r, pausa));
     }
   }

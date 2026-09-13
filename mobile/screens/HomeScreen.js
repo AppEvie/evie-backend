@@ -14,6 +14,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Animated,
+  Dimensions,
 } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
@@ -25,7 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
-import { interpretarComando, interpretarDocumento, gerarFala, buscarLugaresProximos, gerarPost, interpretarCurriculo, sintetizarDocumento } from '../lib/api';
+import { interpretarComando, interpretarDocumento, gerarFala, buscarLugaresProximos, gerarPost, interpretarCurriculo, sintetizarDocumento, acordarServidor } from '../lib/api';
 import * as Clipboard from 'expo-clipboard';
 import { useShareIntentContext } from 'expo-share-intent';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -64,6 +65,7 @@ const NOME_ASSISTENTE = 'Evie';
 // ele não empurra o conteúdo pra cima da barra de navegação do sistema,
 // então adicionamos essa margem extra manualmente.
 const MARGEM_INFERIOR_SEGURA = Platform.OS === 'android' ? 64 : 24;
+const ALTURA_TELA = Dimensions.get('window').height;
 
 // ---- Paleta "executiva": navy profundo, papel neutro e latão — em vez
 // da estética mais informal de caderno de anotações. ----
@@ -304,6 +306,15 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     setModalConfigAberto(true);
   }, [nomeUsuario, personalidade]);
 
+  // Primeira vez usando o app (sem nome salvo ainda) — abre Configurações
+  // sozinha, pra pessoa já personalizar de cara, sem precisar de telas
+  // separadas de onboarding.
+  useEffect(() => {
+    if (!nomeUsuario) {
+      abrirConfiguracoes();
+    }
+  }, []);
+
   const salvarConfiguracoes = useCallback(async () => {
     const nomeLimpo = nomeEditando.trim();
     if (nomeLimpo && onAtualizarNome) await onAtualizarNome(nomeLimpo);
@@ -435,6 +446,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   const [processandoAdicaoNaSoma, setProcessandoAdicaoNaSoma] = useState(false);
 
   useEffect(() => {
+    acordarServidor();
     listarDocumentos().then(setDocumentos);
     listarSomas().then(setSomasGuardadas);
     listarPosts().then(setHistoricoPosts);
@@ -741,10 +753,10 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   }, [tirarFotoSoma, escolherFotosSoma, escolherPdfSoma]);
 
   // ---- Currículo profissional (usado pra dar "a pegada" certa nos posts) ----
-  const processarFotoCurriculo = useCallback(async (base64) => {
+  const processarFotoCurriculo = useCallback(async (base64, mimeType = 'image/jpeg') => {
     setProcessandoCurriculo(true);
     try {
-      const extraido = await interpretarCurriculo(base64, 'image/jpeg');
+      const extraido = await interpretarCurriculo(base64, mimeType);
       const perfil = {
         area: extraido.area || '',
         cargoAtual: extraido.cargoAtual || '',
@@ -791,13 +803,27 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     }
   }, [processarFotoCurriculo]);
 
+  const escolherPdfCurriculo = useCallback(async () => {
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({ type: 'application/pdf', copyToCacheDirectory: true });
+      if (resultado.canceled || !resultado.assets?.[0]) return;
+      const arquivo = resultado.assets[0];
+      const base64 = await FileSystem.readAsStringAsync(arquivo.uri, { encoding: FileSystem.EncodingType.Base64 });
+      processarFotoCurriculo(base64, 'application/pdf');
+    } catch (e) {
+      console.error('[curriculo] erro ao escolher PDF:', e);
+      Alert.alert('Não consegui abrir o PDF', `Motivo técnico: ${e?.message || String(e)}`);
+    }
+  }, [processarFotoCurriculo]);
+
   const abrirEscolhaFotoCurriculo = useCallback(() => {
     Alert.alert('Currículo profissional', 'Como você quer adicionar?', [
       { text: 'Tirar foto', onPress: tirarFotoCurriculo },
       { text: 'Escolher da galeria', onPress: escolherFotoCurriculo },
+      { text: 'Escolher arquivo PDF', onPress: escolherPdfCurriculo },
       { text: 'Cancelar', style: 'cancel' },
     ]);
-  }, [tirarFotoCurriculo, escolherFotoCurriculo]);
+  }, [tirarFotoCurriculo, escolherFotoCurriculo, escolherPdfCurriculo]);
 
   const removerCurriculoSalvo = useCallback(async () => {
     await removerPerfilProfissional();
@@ -3727,7 +3753,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
         >
         <View style={styles.modalFundo}>
           <View style={[styles.modalCartao, { maxHeight: '85%' }]}>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: ALTURA_TELA * 0.65 }}>
             <View style={styles.modalTopo}>
               <Text style={styles.modalTitulo}>Configurações</Text>
               <TouchableOpacity
@@ -3764,9 +3790,9 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
               );
             })}
 
-            <Text style={[styles.configLabel, { marginTop: 18 }]}>Currículo profissional</Text>
+            <Text style={[styles.configLabel, { marginTop: 18 }]}>Currículo profissional (opcional)</Text>
             <Text style={styles.lembreteSubtitulo}>
-              Usado pra dar a pegada certa nos posts de rede social que a Evie gerar.
+              Não é obrigatório — a Evie funciona normalmente sem ele. Se enviar, ela usa pra dar a pegada certa nos posts de rede social que gerar.
             </Text>
             {perfilProfissional ? (
               <View style={styles.curriculoCartao}>
@@ -3806,11 +3832,15 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                 </Text>
               </TouchableOpacity>
             )}
+            </ScrollView>
 
-            <TouchableOpacity style={styles.modalBotaoOuvir} activeOpacity={0.8} onPress={salvarConfiguracoes}>
+            <TouchableOpacity
+              style={[styles.modalBotaoOuvir, styles.modalConfigBotaoFixo]}
+              activeOpacity={0.8}
+              onPress={salvarConfiguracoes}
+            >
               <Text style={styles.modalBotaoOuvirTexto}>Salvar</Text>
             </TouchableOpacity>
-            </ScrollView>
           </View>
         </View>
         </KeyboardAvoidingView>
@@ -4252,6 +4282,10 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   modalBotaoOuvirTexto: { color: '#FFFFFF', fontSize: 13.5, fontFamily: 'Poppins_700Bold' },
+  modalConfigBotaoFixo: {
+    marginTop: 14,
+    marginBottom: 0,
+  },
 
   pastaMes: {
     marginBottom: 4,

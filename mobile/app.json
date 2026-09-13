@@ -29,11 +29,14 @@
         "backgroundColor": "#0B2545"
       },
       "permissions": [
-        "RECORD_AUDIO",
-        "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "CAMERA",
-        "READ_MEDIA_IMAGES"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -67,10 +70,37 @@
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": ["image/*", "application/pdf"],
-          "androidMultiIntentFilters": ["image/*"]
+          "androidIntentFilters": [
+            "image/*",
+            "application/pdf"
+          ],
+          "androidMultiIntentFilters": [
+            "image/*"
+          ]
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ShareExtension",
+                  "bundleIdentifier": "com.thiagofreire.evie.share-extension",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.thiagofreire.evie"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "8acd7915-2919-48f1-9bb3-311ec171d3dc"
+      }
+    }
   }
 }

@@ -16588,3 +16588,208 @@
 {"_e":"metro:client_log","_t":1788927295430,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
 {"_e":"metro:client_log","_t":1788927295483,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-09-manha","| última salva:","2026-09-09-manha"]}
 {"_e":"metro:client_log","_t":1788927295483,"level":"log","data":["[saudacao-auto] já saudou nesse período, não vai falar de novo."]}
+{"_e":"root:init","_t":1789012548697,"format":"v0-jsonl","version":"57.0.11"}
+{"_e":"env:mode","_t":1789012548700,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1789012548702,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1789012549196,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1789012549619,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1789012550204,"plugins":[]}
+{"_e":"metro:instantiate","_t":1789012555244,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1789012575680,"id":"1","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1789012575680,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789012575686,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789012576427,"id":"1","progress":0.010000000000000002,"total":1,"current":1}
+{"_e":"metro:bundling:progress","_t":1789012576533,"id":"1","progress":0.010000000000000002,"total":3,"current":1}
+{"_e":"metro:bundling:progress","_t":1789012576537,"id":"1","progress":0.04000000000000001,"total":3,"current":2}
+{"_e":"metro:bundling:progress","_t":1789012576637,"id":"1","progress":0.09467455621301776,"total":26,"current":8}
+{"_e":"metro:bundling:progress","_t":1789012576739,"id":"1","progress":0.09467455621301776,"total":55,"current":12}
+{"_e":"metro:bundling:progress","_t":1789012576845,"id":"1","progress":0.09467455621301776,"total":55,"current":16}
+{"_e":"metro:bundling:progress","_t":1789012576949,"id":"1","progress":0.10370583165756965,"total":59,"current":19}
+{"_e":"metro:bundling:progress","_t":1789012576982,"id":"1","progress":0.11490950876185003,"total":59,"current":20}
+{"_e":"metro:bundling:progress","_t":1789012577081,"id":"1","progress":0.1873468478503007,"total":67,"current":29}
+{"_e":"metro:bundling:progress","_t":1789012577183,"id":"1","progress":0.29340277777777773,"total":72,"current":39}
+{"_e":"metro:bundling:progress","_t":1789012577284,"id":"1","progress":0.37999624695064743,"total":73,"current":45}
+{"_e":"metro:bundling:progress","_t":1789012577397,"id":"1","progress":0.37999624695064743,"total":93,"current":48}
+{"_e":"metro:bundling:progress","_t":1789012577577,"id":"1","progress":0.37999624695064743,"total":93,"current":49}
+{"_e":"metro:bundling:progress","_t":1789012577677,"id":"1","progress":0.37999624695064743,"total":99,"current":60}
+{"_e":"metro:bundling:progress","_t":1789012577785,"id":"1","progress":0.41004924592182207,"total":114,"current":73}
+{"_e":"metro:bundling:progress","_t":1789012577886,"id":"1","progress":0.41004924592182207,"total":180,"current":87}
+{"_e":"metro:bundling:progress","_t":1789012577991,"id":"1","progress":0.41004924592182207,"total":284,"current":102}
+{"_e":"metro:bundling:progress","_t":1789012578092,"id":"1","progress":0.41004924592182207,"total":313,"current":118}
+{"_e":"metro:bundling:progress","_t":1789012578194,"id":"1","progress":0.41004924592182207,"total":371,"current":134}
+{"_e":"metro:bundling:progress","_t":1789012578295,"id":"1","progress":0.41004924592182207,"total":395,"current":151}
+{"_e":"metro:bundling:progress","_t":1789012578398,"id":"1","progress":0.41004924592182207,"total":406,"current":167}
+{"_e":"metro:bundling:progress","_t":1789012578503,"id":"1","progress":0.41004924592182207,"total":416,"current":177}
+{"_e":"metro:bundling:progress","_t":1789012578607,"id":"1","progress":0.41004924592182207,"total":432,"current":192}
+{"_e":"metro:bundling:progress","_t":1789012578736,"id":"1","progress":0.41004924592182207,"total":450,"current":206}
+{"_e":"metro:bundling:progress","_t":1789012578850,"id":"1","progress":0.41004924592182207,"total":461,"current":213}
+{"_e":"metro:bundling:progress","_t":1789012578955,"id":"1","progress":0.41004924592182207,"total":475,"current":229}
+{"_e":"metro:bundling:progress","_t":1789012579059,"id":"1","progress":0.41004924592182207,"total":496,"current":247}
+{"_e":"metro:bundling:progress","_t":1789012579159,"id":"1","progress":0.41004924592182207,"total":508,"current":267}
+{"_e":"metro:bundling:progress","_t":1789012579258,"id":"1","progress":0.41004924592182207,"total":520,"current":290}
+{"_e":"metro:bundling:progress","_t":1789012579359,"id":"1","progress":0.41004924592182207,"total":526,"current":311}
+{"_e":"metro:bundling:progress","_t":1789012579459,"id":"1","progress":0.41004924592182207,"total":532,"current":334}
+{"_e":"metro:bundling:progress","_t":1789012579560,"id":"1","progress":0.4996575118494016,"total":539,"current":381}
+{"_e":"metro:bundling:progress","_t":1789012579660,"id":"1","progress":0.5202078451844747,"total":574,"current":414}
+{"_e":"metro:bundling:progress","_t":1789012579760,"id":"1","progress":0.5319302632857793,"total":617,"current":450}
+{"_e":"metro:bundling:progress","_t":1789012579861,"id":"1","progress":0.5565633660871756,"total":630,"current":470}
+{"_e":"metro:bundling:progress","_t":1789012579961,"id":"1","progress":0.5689335323099101,"total":643,"current":485}
+{"_e":"metro:bundling:progress","_t":1789012580061,"id":"1","progress":0.5689335323099101,"total":677,"current":510}
+{"_e":"metro:bundling:progress","_t":1789012580164,"id":"1","progress":0.5932277048438207,"total":705,"current":543}
+{"_e":"metro:bundling:progress","_t":1789012580264,"id":"1","progress":0.5932277048438207,"total":746,"current":572}
+{"_e":"metro:bundling:progress","_t":1789012580364,"id":"1","progress":0.6115777184848068,"total":757,"current":592}
+{"_e":"metro:bundling:progress","_t":1789012580473,"id":"1","progress":0.625782867483652,"total":761,"current":602}
+{"_e":"metro:bundling:progress","_t":1789012580576,"id":"1","progress":0.6279057843294344,"total":790,"current":626}
+{"_e":"metro:bundling:progress","_t":1789012580679,"id":"1","progress":0.6653520654953639,"total":803,"current":655}
+{"_e":"metro:bundling:progress","_t":1789012580822,"id":"1","progress":0.6927201882643417,"total":805,"current":670}
+{"_e":"metro:bundling:progress","_t":1789012580922,"id":"1","progress":0.7915765570934256,"total":816,"current":726}
+{"_e":"metro:bundling:progress","_t":1789012581023,"id":"1","progress":0.8300741349561822,"total":821,"current":748}
+{"_e":"metro:bundling:progress","_t":1789012581129,"id":"1","progress":0.8341199271049025,"total":842,"current":769}
+{"_e":"metro:bundling:progress","_t":1789012581228,"id":"1","progress":0.8341199271049025,"total":896,"current":794}
+{"_e":"metro:bundling:progress","_t":1789012581331,"id":"1","progress":0.8341199271049025,"total":906,"current":824}
+{"_e":"metro:bundling:progress","_t":1789012581430,"id":"1","progress":0.8346775886438805,"total":926,"current":846}
+{"_e":"metro:bundling:progress","_t":1789012581539,"id":"1","progress":0.8889795918367347,"total":945,"current":891}
+{"_e":"metro:bundling:progress","_t":1789012581638,"id":"1","progress":0.9126008705010783,"total":962,"current":919}
+{"_e":"metro:bundling:progress","_t":1789012581738,"id":"1","progress":0.967282389201828,"total":970,"current":954}
+{"_e":"metro:bundling:progress","_t":1789012581851,"id":"1","progress":0.9979539647302491,"total":977,"current":976}
+{"_e":"metro:bundling:progress","_t":1789012582215,"id":"1","progress":0.999,"total":977,"current":977}
+{"_e":"metro:bundling:progress","_t":1789012582327,"id":"1","progress":0.999,"total":980,"current":980}
+{"_e":"metro:bundling:done","_t":1789012582467,"id":"1","total":980,"ms":6787.6009}
+{"_e":"metro:client_log","_t":1789012586259,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:client_log","_t":1789012586465,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","false","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012587135,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012587181,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-09-noite","| última salva:","2026-09-09-manha"]}
+{"_e":"metro:client_log","_t":1789012587182,"level":"log","data":["[saudacao-auto] vai falar agora. eventosHoje.length:","0"]}
+{"_e":"metro:client_log","_t":1789012587182,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Boa noite, Thiago. Você não tem nenhum compromisso hoje."]}
+{"_e":"metro:client_log","_t":1789012588069,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012588188,"level":"log","data":["[voz] audio recebido, tamanho base64:","47872","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012588255,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012588624-1.mp3"]}
+{"_e":"metro:client_log","_t":1789012605055,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","false"]}
+{"_e":"metro:client_log","_t":1789012605140,"level":"log","data":["[mic] checando permissao..."]}
+{"_e":"metro:client_log","_t":1789012605140,"level":"log","data":["[mic] permissao atual:","{\"status\":\"granted\",\"canAskAgain\":true,\"granted\":true,\"expires\":\"never\"}"]}
+{"_e":"metro:client_log","_t":1789012605140,"level":"log","data":["[mic] iniciando reconhecimento..."]}
+{"_e":"metro:client_log","_t":1789012605140,"level":"log","data":["[mic] start() chamado sem erro imediato."]}
+{"_e":"metro:client_log","_t":1789012608294,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","true"]}
+{"_e":"metro:client_log","_t":1789012611554,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","A que horas você quer que eu te avise sobre isso?"]}
+{"_e":"metro:client_log","_t":1789012612211,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012612259,"level":"log","data":["[voz] audio recebido, tamanho base64:","32000","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012612306,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012612689-2.mp3"]}
+{"_e":"metro:client_log","_t":1789012616788,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","false"]}
+{"_e":"metro:client_log","_t":1789012616844,"level":"log","data":["[mic] checando permissao..."]}
+{"_e":"metro:client_log","_t":1789012616844,"level":"log","data":["[mic] permissao atual:","{\"status\":\"granted\",\"canAskAgain\":true,\"granted\":true,\"expires\":\"never\"}"]}
+{"_e":"metro:client_log","_t":1789012616844,"level":"log","data":["[mic] iniciando reconhecimento..."]}
+{"_e":"metro:client_log","_t":1789012616844,"level":"log","data":["[mic] start() chamado sem erro imediato."]}
+{"_e":"metro:client_log","_t":1789012619564,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","true"]}
+{"_e":"metro:client_log","_t":1789012619994,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Combinado, vou te avisar às 09 e 00."]}
+{"_e":"metro:client_log","_t":1789012620535,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012620581,"level":"log","data":["[voz] audio recebido, tamanho base64:","41728","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012620581,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012620983-3.mp3"]}
+{"_e":"metro:client_log","_t":1789012632741,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","false"]}
+{"_e":"metro:client_log","_t":1789012632801,"level":"log","data":["[mic] checando permissao..."]}
+{"_e":"metro:client_log","_t":1789012632801,"level":"log","data":["[mic] permissao atual:","{\"status\":\"granted\",\"canAskAgain\":true,\"granted\":true,\"expires\":\"never\"}"]}
+{"_e":"metro:client_log","_t":1789012632801,"level":"log","data":["[mic] iniciando reconhecimento..."]}
+{"_e":"metro:client_log","_t":1789012632801,"level":"log","data":["[mic] start() chamado sem erro imediato."]}
+{"_e":"metro:client_log","_t":1789012633614,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","true"]}
+{"_e":"metro:client_log","_t":1789012865548,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012865605,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-10-manha","| última salva:","2026-09-09-noite"]}
+{"_e":"metro:client_log","_t":1789012865605,"level":"log","data":["[saudacao-auto] vai falar agora. eventosHoje.length:","0"]}
+{"_e":"metro:client_log","_t":1789012865605,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Bom dia, Thiago. Você não tem nenhum compromisso hoje."]}
+{"_e":"metro:client_log","_t":1789012865832,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012865878,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-10-manha","| última salva:","2026-09-10-manha"]}
+{"_e":"metro:client_log","_t":1789012865879,"level":"log","data":["[saudacao-auto] já saudou nesse período, não vai falar de novo."]}
+{"_e":"metro:client_log","_t":1789012866386,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012866433,"level":"log","data":["[voz] audio recebido, tamanho base64:","46080","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012866480,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012866836-1.mp3"]}
+{"_e":"metro:client_log","_t":1789012910051,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012910114,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-10-manha","| última salva:","2026-09-10-manha"]}
+{"_e":"metro:client_log","_t":1789012910172,"level":"log","data":["[saudacao-auto] já saudou nesse período, não vai falar de novo."]}
+{"_e":"metro:client_log","_t":1789012910293,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012910350,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-10-manha","| última salva:","2026-09-10-manha"]}
+{"_e":"metro:client_log","_t":1789012910351,"level":"log","data":["[saudacao-auto] já saudou nesse período, não vai falar de novo."]}
+{"_e":"root:init","_t":1789012932222,"format":"v0-jsonl","version":"57.0.11"}
+{"_e":"env:mode","_t":1789012932225,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1789012932227,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1789012932822,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1789012933307,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1789012933609,"plugins":[]}
+{"_e":"metro:instantiate","_t":1789012938137,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1789012942009,"id":"1","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1789012942010,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789012942021,"id":"1","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789012942676,"id":"1","progress":0.010000000000000002,"total":1,"current":1}
+{"_e":"metro:bundling:progress","_t":1789012942789,"id":"1","progress":0.010000000000000002,"total":3,"current":1}
+{"_e":"metro:bundling:progress","_t":1789012942793,"id":"1","progress":0.04000000000000001,"total":3,"current":2}
+{"_e":"metro:bundling:progress","_t":1789012942898,"id":"1","progress":0.20661157024793386,"total":11,"current":5}
+{"_e":"metro:bundling:progress","_t":1789012943707,"id":"1","progress":0.29752066115702475,"total":11,"current":6}
+{"_e":"metro:bundling:progress","_t":1789012943807,"id":"1","progress":0.29752066115702475,"total":135,"current":12}
+{"_e":"metro:bundling:progress","_t":1789012943908,"id":"1","progress":0.29752066115702475,"total":168,"current":29}
+{"_e":"metro:bundling:progress","_t":1789012944011,"id":"1","progress":0.29752066115702475,"total":194,"current":37}
+{"_e":"metro:bundling:progress","_t":1789012944114,"id":"1","progress":0.29752066115702475,"total":214,"current":49}
+{"_e":"metro:bundling:progress","_t":1789012944226,"id":"1","progress":0.29752066115702475,"total":227,"current":58}
+{"_e":"metro:bundling:progress","_t":1789012944329,"id":"1","progress":0.29752066115702475,"total":250,"current":73}
+{"_e":"metro:bundling:progress","_t":1789012944429,"id":"1","progress":0.29752066115702475,"total":276,"current":101}
+{"_e":"metro:bundling:progress","_t":1789012944529,"id":"1","progress":0.29752066115702475,"total":301,"current":131}
+{"_e":"metro:bundling:progress","_t":1789012944631,"id":"1","progress":0.29752066115702475,"total":330,"current":167}
+{"_e":"metro:bundling:progress","_t":1789012944731,"id":"1","progress":0.29752066115702475,"total":378,"current":204}
+{"_e":"metro:bundling:progress","_t":1789012944832,"id":"1","progress":0.3257346817370612,"total":410,"current":234}
+{"_e":"metro:bundling:progress","_t":1789012944933,"id":"1","progress":0.3257346817370612,"total":447,"current":255}
+{"_e":"metro:bundling:progress","_t":1789012945034,"id":"1","progress":0.3580354743348562,"total":488,"current":292}
+{"_e":"metro:bundling:progress","_t":1789012945135,"id":"1","progress":0.3942671714440238,"total":516,"current":324}
+{"_e":"metro:bundling:progress","_t":1789012945237,"id":"1","progress":0.4158654746594414,"total":566,"current":365}
+{"_e":"metro:bundling:progress","_t":1789012945339,"id":"1","progress":0.4239118620070735,"total":599,"current":390}
+{"_e":"metro:bundling:progress","_t":1789012945440,"id":"1","progress":0.4591115956509278,"total":611,"current":414}
+{"_e":"metro:bundling:progress","_t":1789012945555,"id":"1","progress":0.4816941144743427,"total":621,"current":431}
+{"_e":"metro:bundling:progress","_t":1789012945657,"id":"1","progress":0.5142688138858494,"total":654,"current":469}
+{"_e":"metro:bundling:progress","_t":1789012945758,"id":"1","progress":0.5669999820717845,"total":668,"current":503}
+{"_e":"metro:bundling:progress","_t":1789012945858,"id":"1","progress":0.6377163265306123,"total":700,"current":559}
+{"_e":"metro:bundling:progress","_t":1789012945959,"id":"1","progress":0.7244113748264108,"total":712,"current":606}
+{"_e":"metro:bundling:progress","_t":1789012946059,"id":"1","progress":0.7540931091428267,"total":737,"current":640}
+{"_e":"metro:bundling:progress","_t":1789012946159,"id":"1","progress":0.7540931091428267,"total":791,"current":665}
+{"_e":"metro:bundling:progress","_t":1789012946259,"id":"1","progress":0.7540931091428267,"total":835,"current":703}
+{"_e":"metro:bundling:progress","_t":1789012946359,"id":"1","progress":0.7540931091428267,"total":857,"current":725}
+{"_e":"metro:bundling:progress","_t":1789012946461,"id":"1","progress":0.755803100397695,"total":888,"current":772}
+{"_e":"metro:bundling:progress","_t":1789012946563,"id":"1","progress":0.7818693027038263,"total":907,"current":802}
+{"_e":"metro:bundling:progress","_t":1789012946663,"id":"1","progress":0.8109732651570489,"total":925,"current":833}
+{"_e":"metro:bundling:progress","_t":1789012946766,"id":"1","progress":0.8497918281068737,"total":934,"current":861}
+{"_e":"metro:bundling:progress","_t":1789012946867,"id":"1","progress":0.9026009592526548,"total":941,"current":894}
+{"_e":"metro:bundling:progress","_t":1789012946969,"id":"1","progress":0.920400390625,"total":960,"current":921}
+{"_e":"metro:bundling:progress","_t":1789012947069,"id":"1","progress":0.9876034255953181,"total":965,"current":959}
+{"_e":"metro:bundling:progress","_t":1789012947172,"id":"1","progress":0.9958634997792437,"total":966,"current":964}
+{"_e":"metro:bundling:progress","_t":1789012947409,"id":"1","progress":0.9979306782574403,"total":966,"current":965}
+{"_e":"metro:bundling:progress","_t":1789012947522,"id":"1","progress":0.9979370815188277,"total":969,"current":968}
+{"_e":"metro:bundling:progress","_t":1789012947628,"id":"1","progress":0.999,"total":969,"current":969}
+{"_e":"metro:bundling:progress","_t":1789012947735,"id":"1","progress":0.999,"total":980,"current":980}
+{"_e":"metro:bundling:done","_t":1789012947885,"id":"1","total":980,"ms":5875.6958}
+{"_e":"metro:client_log","_t":1789012951611,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:client_log","_t":1789012951845,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","false","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012952533,"level":"log","data":["[saudacao-auto] verificando... agendaCarregada:","true","| nomeUsuario:","Thiago"]}
+{"_e":"metro:client_log","_t":1789012952577,"level":"log","data":["[saudacao-auto] chave atual:","2026-09-10-manha","| última salva:","2026-09-10-manha"]}
+{"_e":"metro:client_log","_t":1789012952578,"level":"log","data":["[saudacao-auto] já saudou nesse período, não vai falar de novo."]}
+{"_e":"metro:client_log","_t":1789012958920,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Thiago, Sua agenda está inteiramente livre hoje."]}
+{"_e":"metro:client_log","_t":1789012959591,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012959636,"level":"log","data":["[voz] audio recebido, tamanho base64:","40704","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012959684,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012960070-1.mp3"]}
+{"_e":"metro:client_log","_t":1789012969111,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Thiago, Sua agenda está inteiramente livre hoje."]}
+{"_e":"metro:client_log","_t":1789012969731,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012969783,"level":"log","data":["[voz] audio recebido, tamanho base64:","40704","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012969830,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012970205-2.mp3"]}
+{"_e":"metro:client_log","_t":1789012991022,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","false"]}
+{"_e":"metro:client_log","_t":1789012991071,"level":"log","data":["[mic] checando permissao..."]}
+{"_e":"metro:client_log","_t":1789012991072,"level":"log","data":["[mic] permissao atual:","{\"status\":\"granted\",\"canAskAgain\":true,\"granted\":true,\"expires\":\"never\"}"]}
+{"_e":"metro:client_log","_t":1789012991072,"level":"log","data":["[mic] iniciando reconhecimento..."]}
+{"_e":"metro:client_log","_t":1789012991072,"level":"log","data":["[mic] start() chamado sem erro imediato."]}
+{"_e":"metro:client_log","_t":1789012994164,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","true"]}
+{"_e":"metro:client_log","_t":1789012997686,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Achei: McDonald's, a zero vírgula três quilômetros daqui."]}
+{"_e":"metro:client_log","_t":1789012998280,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789012998324,"level":"log","data":["[voz] audio recebido, tamanho base64:","48384","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789012998325,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789012998726-3.mp3"]}
+{"_e":"metro:client_log","_t":1789013331307,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","false"]}
+{"_e":"metro:client_log","_t":1789013331357,"level":"log","data":["[mic] checando permissao..."]}
+{"_e":"metro:client_log","_t":1789013331357,"level":"log","data":["[mic] permissao atual:","{\"status\":\"granted\",\"canAskAgain\":true,\"granted\":true,\"expires\":\"never\"}"]}
+{"_e":"metro:client_log","_t":1789013331358,"level":"log","data":["[mic] iniciando reconhecimento..."]}
+{"_e":"metro:client_log","_t":1789013331358,"level":"log","data":["[mic] start() chamado sem erro imediato."]}
+{"_e":"metro:client_log","_t":1789013334042,"level":"log","data":["[mic] alternarEscuta chamada. ouvindo atualmente:","true"]}
+{"_e":"metro:client_log","_t":1789013338874,"level":"log","data":["[voz] iniciando, tentando o serviço de voz. texto:","Achei: McDonald's, a zero vírgula três quilômetros daqui."]}
+{"_e":"metro:client_log","_t":1789013339914,"level":"log","data":["[voz] resposta do backend, status:","200"]}
+{"_e":"metro:client_log","_t":1789013339961,"level":"log","data":["[voz] audio recebido, tamanho base64:","72504","— tocando agora"]}
+{"_e":"metro:client_log","_t":1789013340006,"level":"log","data":["[voz] Áudio gerado tocando com sucesso. arquivo:","file:///data/user/0/com.seunome.secretaria/cache/fala-evie-1789013340396-4.mp3"]}
