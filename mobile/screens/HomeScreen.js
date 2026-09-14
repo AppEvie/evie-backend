@@ -1777,6 +1777,16 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
             'Não consegui gerar as ideias agora. Tenta de novo.'
           );
         }
+      } else if (resultado.tipo === 'consultar_agenda') {
+        const textoBriefing = montarTextoBriefing();
+        if (textoBriefing) {
+          mostrar(textoBriefing);
+          falar(textoBriefing);
+        } else {
+          const semCompromissos = 'Você não tem nenhum compromisso nem lembrete pendente por enquanto.';
+          mostrar(semCompromissos);
+          falar(semCompromissos);
+        }
       } else {
         const fala = resultado.resposta_falada || frasePersonalizada('pronto', personalidade);
         mostrar(fala);
@@ -2007,6 +2017,23 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   );
   const lembretesPendentes = lembretes.filter((e) => !e.concluido).length;
 
+  // Monta o texto do briefing do dia — usada tanto pro cartão visual
+  // quanto pra resposta falada quando a pessoa pergunta pelos compromissos.
+  const montarTextoBriefing = useCallback(() => {
+    const itens = [];
+    if (eventosHoje.length > 0) {
+      itens.push(
+        eventosHoje.length === 1
+          ? `${eventosHoje[0].titulo} às ${horaFalada(eventosHoje[0].inicio)}`
+          : `${eventosHoje.length} compromissos hoje, o primeiro às ${horaFalada(eventosHoje[0].inicio)}`
+      );
+    }
+    if (lembretesPendentes > 0) itens.push(`${lembretesPendentes} lembrete${lembretesPendentes > 1 ? 's' : ''} pendente${lembretesPendentes > 1 ? 's' : ''}`);
+    if (itemUrgente) itens.push(itemUrgente.replace(/\.$/, ''));
+    if (itens.length === 0) return null;
+    return itens.join(' · ') + '.';
+  }, [eventosHoje, lembretesPendentes, itemUrgente]);
+
   const emails = useMemo(
     () => entradas.filter((e) => e.tipo === 'email'),
     [entradas]
@@ -2163,18 +2190,9 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
         </View>
 
         {(() => {
-          const itensBriefing = [];
-          if (eventosHoje.length > 0) {
-            itensBriefing.push(
-              eventosHoje.length === 1
-                ? `${eventosHoje[0].titulo} às ${horaFalada(eventosHoje[0].inicio)}`
-                : `${eventosHoje.length} compromissos hoje, o primeiro às ${horaFalada(eventosHoje[0].inicio)}`
-            );
-          }
-          if (lembretesPendentes > 0) itensBriefing.push(`${lembretesPendentes} lembrete${lembretesPendentes > 1 ? 's' : ''} pendente${lembretesPendentes > 1 ? 's' : ''}`);
-          if (itemUrgente) itensBriefing.push(itemUrgente.replace(/\.$/, ''));
+          const textoBriefing = montarTextoBriefing();
+          if (!textoBriefing) return null;
           const totalItens = eventosHoje.length + lembretesPendentes + (itemUrgente ? 1 : 0);
-          if (totalItens === 0) return null;
           return (
             <TouchableOpacity style={styles.briefingCard} activeOpacity={0.8} onPress={abrirCompromissosDeHoje}>
               <View style={styles.briefingTopo}>
@@ -2184,7 +2202,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   <FontAwesome name="chevron-right" size={11} color={COR.tintaSuave} />
                 </View>
               </View>
-              <Text style={styles.briefingTexto}>{itensBriefing.join(' · ')}.</Text>
+              <Text style={styles.briefingTexto}>{textoBriefing}</Text>
             </TouchableOpacity>
           );
         })()}
