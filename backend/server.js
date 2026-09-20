@@ -254,14 +254,24 @@ function calcularProximaOcorrenciaMensal(texto, agora) {
 
 app.post('/interpretar', async (req, res) => {
   try {
-    const { texto, estiloEscrita, personalidade } = req.body;
+    const { texto, estiloEscrita, personalidade, dataHoraLocal } = req.body;
     if (!texto) return res.status(400).json({ erro: 'campo "texto" é obrigatório' });
 
-    const agora = new Date();
+    // Usa o horário exatamente como o celular da pessoa vê (fuso local
+    // dele), em vez do relógio do servidor — o servidor roda em UTC, e
+    // à noite (em qualquer fuso mais atrasado que UTC, como o Brasil ou
+    // os EUA) isso fazia "hoje" virar "amanhã" por engano. Se por algum
+    // motivo o app não mandar essa informação (versão antiga), cai de
+    // volta pro relógio do servidor, mantendo compatibilidade.
+    const agora = dataHoraLocal
+      ? new Date(dataHoraLocal.ano, dataHoraLocal.mes, dataHoraLocal.dia, dataHoraLocal.horas, dataHoraLocal.minutos)
+      : new Date();
+    console.log('[DIAGNOSTICO-FUSO] dataHoraLocal recebida do app:', JSON.stringify(dataHoraLocal), '| "agora" calculado (ano/mes/dia):', agora.getFullYear(), agora.getMonth() + 1, agora.getDate());
     // Horário de Brasília explícito (não UTC), porque à noite o UTC já está
     // um dia à frente do Brasil.
-    const isoAgora = agora.toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T');
-    const diaSemana = agora.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' });
+    const isoAgora = agora.toLocaleString('sv-SE').replace(' ', 'T');
+    const nomesDiasSemana = ['domingo', 'segunda-feira', 'terca-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sabado'];
+    const diaSemana = nomesDiasSemana[agora.getDay()];
     const mapaDatas = calcularMapaDeDatas(agora);
 
     let systemPrompt = buildSystemPrompt(isoAgora, diaSemana, personalidade);
