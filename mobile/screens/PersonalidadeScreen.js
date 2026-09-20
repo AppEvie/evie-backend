@@ -34,7 +34,7 @@ export default function PersonalidadeScreen({ onEscolher }) {
   return (
     <View style={styles.container}>
       <View style={styles.conteudo}>
-        <Text style={styles.titulo}>Que jeito você prefere?</Text>
+        <Text style={styles.titulo}>Como você prefere o meu comportamento?</Text>
         <Text style={styles.subtitulo}>Você pode mudar isso depois, se quiser.</Text>
 
         <View style={{ marginTop: 28 }}>
@@ -51,11 +51,11 @@ export default function PersonalidadeScreen({ onEscolher }) {
                   <FontAwesome name={op.icone} size={18} color={ativa ? '#0B2545' : '#FFFFFF'} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cartaoTitulo}>{op.titulo}</Text>
-                  <Text style={styles.cartaoDescricao}>{op.descricao}</Text>
-                  <Text style={styles.cartaoExemplo}>{op.exemplo}</Text>
+                  <Text style={[styles.cartaoTitulo, ativa && styles.cartaoTituloAtivo]}>{op.titulo}</Text>
+                  <Text style={[styles.cartaoDescricao, ativa && styles.cartaoDescricaoAtivo]}>{op.descricao}</Text>
+                  <Text style={[styles.cartaoExemplo, ativa && styles.cartaoExemploAtivo]}>{op.exemplo}</Text>
                 </View>
-                {ativa && <FontAwesome name="check-circle" size={20} color="#FFFFFF" />}
+                {ativa && <FontAwesome name="check-circle" size={20} color="#0B2545" />}
               </TouchableOpacity>
             );
           })}
@@ -78,36 +78,42 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B2545' },
   conteudo: { flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
   titulo: {
-    color: '#F5F1E8',
-    fontSize: 24,
-    fontFamily: 'Fraunces_700Bold',
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontFamily: 'Poppins_700Bold',
     marginBottom: 6,
+    lineHeight: 28,
   },
-  subtitulo: { color: '#9AA3B8', fontSize: 13.5 },
+  subtitulo: { color: '#B8C9DC', fontSize: 13, fontFamily: 'Poppins_400Regular' },
   cartao: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     borderWidth: 1.3,
-    borderColor: '#2A4048',
-    backgroundColor: '#0D5AA8',
-    borderRadius: 12,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
     padding: 16,
     marginBottom: 12,
   },
-  cartaoAtivo: { borderColor: '#FFFFFF' },
+  cartaoAtivo: { borderColor: '#FFFFFF', backgroundColor: '#FFFFFF' },
   iconeBox: {
     width: 42,
     height: 42,
     borderRadius: 10,
     backgroundColor: '#0B2545',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconeBoxAtivo: { backgroundColor: '#FFFFFF' },
-  cartaoTitulo: { color: '#F5F1E8', fontSize: 15.5, fontWeight: '700', marginBottom: 2 },
-  cartaoDescricao: { color: '#9AA3B8', fontSize: 12.5, marginBottom: 4 },
-  cartaoExemplo: { color: '#FFFFFF', fontSize: 11.5, fontStyle: 'italic' },
+  iconeBoxAtivo: { backgroundColor: '#FFFFFF', borderColor: '#0B2545' },
+  cartaoTitulo: { color: '#FFFFFF', fontSize: 15, fontFamily: 'Poppins_700Bold', marginBottom: 2 },
+  cartaoTituloAtivo: { color: '#0B2545' },
+  cartaoDescricao: { color: '#B8C9DC', fontSize: 12, fontFamily: 'Poppins_400Regular', marginBottom: 4 },
+  cartaoDescricaoAtivo: { color: '#5A6B7D' },
+  cartaoExemplo: { color: '#8FA8C7', fontSize: 11, fontFamily: 'Poppins_400Regular', fontStyle: 'italic' },
+  cartaoExemploAtivo: { color: '#0B2545' },
   botao: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -116,5 +122,5 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   botaoDesativado: { opacity: 0.4 },
-  botaoTexto: { color: '#0B2545', fontSize: 15, fontWeight: '700' },
+  botaoTexto: { color: '#0B2545', fontSize: 15, fontFamily: 'Poppins_700Bold' },
 });

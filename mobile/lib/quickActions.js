@@ -1,4 +1,10 @@
 import { Linking, Platform, Alert } from 'react-native';
+// Importante: NÃO importamos expo-intent-launcher no topo do arquivo.
+// Esse módulo só existe no Android — no iOS, o próprio processo de
+// carregar (import) um módulo nativo que não existe na plataforma pode
+// travar o app inteiro na inicialização, antes mesmo de mostrar
+// qualquer tela. Por isso ele só é carregado dinamicamente, e só
+// quando realmente vamos usar (dentro do bloco "if Android").
 
 export async function abrirAgendaNativa() {
   const url = Platform.OS === 'ios' ? 'calshow://' : 'content://com.android.calendar/time/';
@@ -41,18 +47,26 @@ export async function abrirWhatsapp(numero, mensagem) {
 }
 
 export async function abrirCaixaDeEntradaEmail() {
-  try {
-    // Abre o Gmail direto na caixa de entrada.
-    await Linking.openURL('googlegmail://');
-  } catch (e) {
-    // Gmail não instalado (ou esquema bloqueado) — cai pro comportamento
-    // padrão de compor um email novo, avisando o motivo.
+  if (Platform.OS === 'android') {
     try {
-      await Linking.openURL('mailto:');
-      Alert.alert('Gmail não encontrado', 'Abri o app de email padrão pra escrever, já que não achei o Gmail instalado.');
-    } catch (e2) {
-      Alert.alert('Não consegui abrir', 'Não achei nenhum app de email instalado no celular.');
+      // Abre o Gmail de verdade (direto na caixa de entrada), usando o
+      // nome interno do pacote do app no Android — é o jeito confiável
+      // de fazer isso, diferente de um link comum que só sabe compor
+      // um email novo. Carregado dinamicamente aqui dentro (e não no
+      // topo do arquivo) porque esse módulo só existe no Android.
+      const IntentLauncher = await import('expo-intent-launcher');
+      await IntentLauncher.openApplication('com.google.android.gm');
+      return;
+    } catch (e) {
+      // Gmail não instalado, ou algo impediu — cai pro comportamento
+      // padrão de compor um email novo, avisando o motivo.
     }
+  }
+  try {
+    await Linking.openURL('mailto:');
+    Alert.alert('Gmail não encontrado', 'Abri o app de email padrão pra escrever, já que não achei o Gmail instalado.');
+  } catch (e2) {
+    Alert.alert('Não consegui abrir', 'Não achei nenhum app de email instalado no celular.');
   }
 }
 
