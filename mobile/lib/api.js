@@ -41,13 +41,27 @@ async function fetchComNovaTentativa(url, opcoes, tentativas = 4) {
 }
 
 export async function interpretarComando(texto, estiloEscrita, personalidade) {
+  // Manda os componentes de data/hora exatamente como o celular vê (no
+  // fuso horário local dele) — o servidor roda em outro fuso (UTC), e sem
+  // isso, comandos tipo "hoje" ou "amanhã" podem sair com um dia de
+  // diferença, especialmente à noite.
+  const agoraLocal = new Date();
+  const dataHoraLocal = {
+    ano: agoraLocal.getFullYear(),
+    mes: agoraLocal.getMonth(), // 0-11, igual ao JavaScript
+    dia: agoraLocal.getDate(),
+    horas: agoraLocal.getHours(),
+    minutos: agoraLocal.getMinutes(),
+    diaDaSemana: agoraLocal.getDay(), // 0=domingo
+  };
+
   const response = await fetchComNovaTentativa(`${BACKEND_URL}/interpretar`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'ngrok-skip-browser-warning': 'true',
     },
-    body: JSON.stringify({ texto, estiloEscrita, personalidade }),
+    body: JSON.stringify({ texto, estiloEscrita, personalidade, dataHoraLocal }),
   });
   if (!response.ok) {
     const erro = await response.json().catch(() => ({}));

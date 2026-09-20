@@ -400,6 +400,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   }, []);
   const LIMITE_PREVIA = 3;
   const [proximosEventos, setProximosEventos] = useState([]);
+  const [compromissosDoMesAtual, setCompromissosDoMesAtual] = useState([]);
   const [agendaCarregada, setAgendaCarregada] = useState(false);
   const timerEsconderStatus = useRef(null);
 
@@ -419,6 +420,17 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
       if (!permitido) return;
       const eventos = await buscarProximosEventos(14);
       setProximosEventos(eventos);
+
+      // Busca separada, numa janela mais ampla (45 dias), filtrando só
+      // os compromissos que caem no mês-calendário atual de verdade —
+      // usada especificamente pelo cartão "Agenda do mês", pra nunca
+      // mostrar ali um compromisso que já é do mês seguinte.
+      const hoje = new Date();
+      const eventosNaJanela = await buscarProximosEventos(45);
+      const doMesAtual = eventosNaJanela.filter(
+        (e) => e.inicio.getMonth() === hoje.getMonth() && e.inicio.getFullYear() === hoje.getFullYear()
+      );
+      setCompromissosDoMesAtual(doMesAtual);
     } catch (e) {
       console.error('Erro ao carregar agenda:', e);
     } finally {
@@ -2235,11 +2247,11 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
               <View style={styles.statsIconeBox}>
                 <FontAwesome name="calendar" size={14} color={COR.dourado} />
               </View>
-              <Text style={styles.statsContagem}>{proximosEventos.length}</Text>
+              <Text style={styles.statsContagem}>{compromissosDoMesAtual.length}</Text>
             </View>
             <Text style={styles.statsTitulo} numberOfLines={1} adjustsFontSizeToFit>Agenda do mês</Text>
             <Text style={styles.statsSub} numberOfLines={1}>
-              {proximosEventos[0]?.titulo || 'Nada marcado ainda'}
+              {compromissosDoMesAtual[0]?.titulo || 'Nada marcado ainda'}
             </Text>
             <Text style={styles.statsExpandir}>EXPANDIR</Text>
           </TouchableOpacity>
