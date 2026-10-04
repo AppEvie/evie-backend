@@ -56,6 +56,7 @@ import { chavePeriodoAtual, buscarUltimaSaudacao, salvarUltimaSaudacao, buscarCa
 import { listarDocumentos, salvarDocumento, removerDocumento, salvarImagemPermanente, vincularDocumentoAoEvento } from '../lib/documentos';
 import { salvarImagemSomaPermanente, salvarSoma, listarSomas, removerSoma, atualizarSoma, listarPastasMae, criarPastaMae, removerPastaMae, renomearSoma, renomearPastaMae } from '../lib/somas';
 import { chaveNome, formatarReais, montarEstrutura } from '../lib/somasEstrutura';
+import { dataLocalISO, lembreteVenceAteHoje, textoQuandoLembrete } from '../lib/lembretes';
 import { salvarImagemSintesePermanente, salvarSintese, listarSinteses, removerSintese } from '../lib/sinteses';
 import { salvarPost, listarPosts, removerPost } from '../lib/posts';
 import { carregarEntradas, salvarEntradas } from '../lib/entradas';
@@ -1641,9 +1642,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
       if (horaEntendida) {
         const lembretePendente = perguntaHorarioLembrete;
         setPerguntaHorarioLembrete(null);
-        agendarNotificacaoLembrete(lembretePendente.id, lembretePendente.texto, horaEntendida).catch((e) =>
-          console.log('[notificacoes] erro ao agendar lembrete:', e?.message || e)
-        );
+        agendarLembreteComData(lembretePendente.id, lembretePendente.texto, horaEntendida, lembretePendente.data);
         setEntradas((prev) =>
           prev.map((e) => (e.id === lembretePendente.id ? { ...e, lembrete: { ...e.lembrete, hora: horaEntendida } } : e))
         );
@@ -1679,11 +1678,9 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
       if (resultado.tipo === 'lembrete') {
         const horaFalada = resultado.lembrete?.hora || '';
         if (horaFalada) {
-          agendarNotificacaoLembrete(idNovaEntrada, resultado.lembrete.texto, horaFalada).catch((e) =>
-            console.log('[notificacoes] erro ao agendar lembrete:', e?.message || e)
-          );
+          agendarLembreteComData(idNovaEntrada, resultado.lembrete.texto, horaFalada, resultado.lembrete.data);
         } else {
-          setPerguntaHorarioLembrete({ id: idNovaEntrada, texto: resultado.lembrete?.texto || '' });
+          setPerguntaHorarioLembrete({ id: idNovaEntrada, texto: resultado.lembrete?.texto || '', data: resultado.lembrete?.data || '' });
           falarGerado(
             'Você acabou de guardar um lembrete pro usuário, mas ele não disse a que horas quer ser avisado. Pergunte isso rapidinho.',
             personalidade,
@@ -2013,6 +2010,25 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     }
   }
 
+  // Agenda o aviso do lembrete no dia e horário certos. Se o horário do dia
+  // pedido já tinha passado, o aviso vai pro dia seguinte, e o lembrete passa
+  // a guardar o dia de verdade (é ele que decide se entra no briefing de hoje).
+  function agendarLembreteComData(id, texto, hora, data) {
+    return agendarNotificacaoLembrete(id, texto, hora, data)
+      .then((diaFinal) => {
+        if (diaFinal) {
+          setEntradas((prev) =>
+            prev.map((e) => (e.id === id ? { ...e, lembrete: { ...e.lembrete, data: diaFinal } } : e))
+          );
+        }
+        return diaFinal;
+      })
+      .catch((e) => {
+        console.log('[notificacoes] erro ao agendar lembrete:', e?.message || e);
+        return false;
+      });
+  }
+
   function toggleLembrete(id) {
     setEntradas((prev) =>
       prev.map((e) => (e.id === id ? { ...e, concluido: !e.concluido } : e))
@@ -2251,7 +2267,12 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     () => entradas.filter((e) => e.tipo === 'lembrete'),
     [entradas]
   );
-  const lembretesPendentes = lembretes.filter((e) => !e.concluido).length;
+  // No briefing de hoje entram os lembretes que ainda não foram concluídos
+  // E que são de hoje (ou atrasados). Os de amanhã em diante só aparecem
+  // quando chegar o dia.
+  const lembretesPendentes = lembretes.filter(
+    (e) => !e.concluido && lembreteVenceAteHoje(e.lembrete, dataLocalISO())
+  ).length;
 
   // Monta o texto do briefing do dia — usada tanto pro cartão visual
   // quanto pra resposta falada quando a pessoa pergunta pelos compromissos.
@@ -3306,14 +3327,19 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                     <View style={[styles.checkbox, e.concluido && styles.checkboxOn]}>
                       {e.concluido && <FontAwesome name="check" size={11} color="#FFFFFF" />}
                     </View>
-                    <Text
-                      style={[
-                        styles.linhaTitulo,
-                        e.concluido && { textDecorationLine: 'line-through', color: COR.tintaSuave },
-                      ]}
-                    >
-                      {e.lembrete.texto}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.linhaTitulo,
+                          e.concluido && { textDecorationLine: 'line-through', color: COR.tintaSuave },
+                        ]}
+                      >
+                        {e.lembrete.texto}
+                      </Text>
+                      {!!textoQuandoLembrete(e.lembrete) && (
+                        <Text style={styles.linhaSub}>{textoQuandoLembrete(e.lembrete)}</Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => removerEntrada(e.id)}
@@ -4189,7 +4215,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   const lembretePendente = perguntaHorarioLembrete;
                   setPerguntaHorarioLembrete(null);
                   setHorarioDigitado('');
-                  agendarNotificacaoLembrete(lembretePendente.id, lembretePendente.texto, horaEntendida).catch(() => {});
+                  agendarLembreteComData(lembretePendente.id, lembretePendente.texto, horaEntendida, lembretePendente.data);
                   setEntradas((prev) =>
                     prev.map((e) =>
                       e.id === lembretePendente.id ? { ...e, lembrete: { ...e.lembrete, hora: horaEntendida } } : e

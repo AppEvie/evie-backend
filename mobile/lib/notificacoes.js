@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { calcularAlvoLembrete } from './lembretes';
 
 // Identificadores fixos, pra sempre reconhecermos essas duas notificações
 // específicas (e não duplicar, e saber qual foi tocada).
@@ -66,24 +67,20 @@ export async function cancelarNotificacoesDiarias() {
   await Notifications.cancelScheduledNotificationAsync(ID_NOTIFICACAO_NOITE).catch(() => {});
 }
 
-// Agenda uma notificação única (não repete) pro horário certo de um
-// lembrete específico. Se o horário já passou hoje, agenda pra amanhã
-// no mesmo horário.
-export async function agendarNotificacaoLembrete(lembreteId, texto, horaTexto) {
+// Agenda uma notificação única (não repete) pro dia e horário certos de um
+// lembrete específico. `dataISO` ("AAAA-MM-DD") é o dia que a pessoa pediu,
+// ex: "amanhã"; vazio quer dizer hoje. Se o horário desse dia já passou,
+// toca no mesmo horário do dia seguinte.
+//
+// Devolve o dia em que o aviso vai tocar de verdade ("AAAA-MM-DD"), pra o
+// lembrete guardar o dia certo, ou false se não deu pra agendar.
+export async function agendarNotificacaoLembrete(lembreteId, texto, horaTexto, dataISO) {
   const permitido = await pedirPermissaoNotificacao();
   if (!permitido) return false;
 
-  const [horaStr, minutoStr] = horaTexto.split(':');
-  const hora = parseInt(horaStr, 10);
-  const minuto = parseInt(minutoStr, 10);
-  if (isNaN(hora) || isNaN(minuto)) return false;
-
-  const agora = new Date();
-  const alvo = new Date();
-  alvo.setHours(hora, minuto, 0, 0);
-  if (alvo <= agora) {
-    alvo.setDate(alvo.getDate() + 1);
-  }
+  const calculo = calcularAlvoLembrete(horaTexto, dataISO);
+  if (!calculo) return false;
+  const alvo = calculo.alvo;
 
   const idNotificacao = `evie-lembrete-${lembreteId}`;
   await Notifications.cancelScheduledNotificationAsync(idNotificacao).catch(() => {});
@@ -98,7 +95,7 @@ export async function agendarNotificacaoLembrete(lembreteId, texto, horaTexto) {
     trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: alvo },
   });
 
-  return true;
+  return calculo.dataISO;
 }
 
 export async function cancelarNotificacaoLembrete(lembreteId) {

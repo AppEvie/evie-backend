@@ -26,8 +26,14 @@
           "whatsapp",
           "googlegmail",
           "ms-outlook",
+          "message",
+          "googlecalendar",
+          "whatsapp",
+          "googlegmail",
+          "ms-outlook",
           "message"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -42,10 +48,7 @@
         "android.permission.WRITE_CALENDAR",
         "android.permission.READ_CONTACTS",
         "android.permission.CAMERA",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.READ_MEDIA_IMAGES"
       ]
     },
     "plugins": [

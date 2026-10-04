@@ -335,6 +335,21 @@ app.post('/interpretar', async (req, res) => {
       }
     }
 
+    // Lembrete: mesma ideia, a data (de "amanhã", "sexta", "todo dia 10"...)
+    // é calculada em código, não pelo modelo. Sem data no texto, fica vazia,
+    // que o app entende como "hoje". Antes disso, o lembrete só guardava o
+    // horário, então "me lembra amanhã" virava um lembrete de hoje.
+    // "Segunda via" e "segunda parcela" não são o dia da semana (e o app
+    // lida muito com boleto), então saem do texto antes de procurar o dia.
+    if (parsed.tipo === 'lembrete' && parsed.lembrete) {
+      const textoSemFalsosDias = texto.replace(/segunda[\s-]+(via|vias|parcela|parcelas)\b/gi, ' ');
+      parsed.lembrete.data =
+        calcularProximaOcorrenciaMensal(textoSemFalsosDias, agora) ||
+        encontrarDataNoTexto(textoSemFalsosDias, mapaDatas) ||
+        '';
+      console.log('[LEMBRETE] texto:', JSON.stringify(texto), '| hora:', parsed.lembrete.hora || '(sem hora)', '| data calculada:', parsed.lembrete.data || '(sem data = hoje)');
+    }
+
     res.json(parsed);
   } catch (err) {
     console.error(err);
