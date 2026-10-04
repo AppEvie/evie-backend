@@ -1,4 +1,5 @@
 import { Linking, Platform, Alert } from 'react-native';
+import { limparNumeroParaDiscagem } from './telefone';
 // Importante: NÃO importamos expo-intent-launcher no topo do arquivo.
 // Esse módulo só existe no Android — no iOS, o próprio processo de
 // carregar (import) um módulo nativo que não existe na plataforma pode
@@ -7,6 +8,39 @@ import { Linking, Platform, Alert } from 'react-native';
 // quando realmente vamos usar (dentro do bloco "if Android").
 
 export async function abrirAgendaNativa() {
+  if (Platform.OS === 'ios') {
+    try {
+      // No iOS, "calshow://" é um esquema exclusivo da Apple — sempre
+      // abre o Calendário nativo, mesmo que a pessoa tenha escolhido usar
+      // o Google Agenda nas Configurações da Evie. Se o calendário
+      // escolhido for do Google, tenta abrir o app do Google Agenda
+      // primeiro (esquema próprio dele), caindo pro nativo se não
+      // conseguir.
+      const { buscarCalendarioEscolhidoId } = await import('./armazenamento');
+      const { listarCalendariosDisponiveis } = await import('./calendar');
+      const idEscolhido = await buscarCalendarioEscolhidoId();
+      if (idEscolhido) {
+        const calendarios = await listarCalendariosDisponiveis();
+        const escolhido = calendarios.find((c) => c.id === idEscolhido);
+        const pareceGoogle =
+          escolhido &&
+          (escolhido.source?.type === 'com.google' ||
+            (escolhido.source?.name || '').toLowerCase().includes('gmail') ||
+            (escolhido.source?.name || '').toLowerCase().includes('google'));
+        if (pareceGoogle) {
+          const podeAbrirGoogle = await Linking.canOpenURL('googlecalendar://');
+          if (podeAbrirGoogle) {
+            await Linking.openURL('googlecalendar://');
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      // Qualquer erro nessa checagem extra não deve impedir de abrir o
+      // calendário nativo como alternativa — só segue pro padrão abaixo.
+    }
+  }
+
   const url = Platform.OS === 'ios' ? 'calshow://' : 'content://com.android.calendar/time/';
   try {
     await Linking.openURL(url);
@@ -47,24 +81,62 @@ export async function abrirWhatsapp(numero, mensagem) {
 }
 
 export async function abrirCaixaDeEntradaEmail() {
-  if (Platform.OS === 'android') {
+  const { buscarAppEmailEscolhido } = await import('./armazenamento');
+  const appEscolhido = await buscarAppEmailEscolhido(); // 'gmail' | 'outlook' | 'nativo'
+
+  if (Platform.OS === 'ios') {
+    // No iOS, cada app de email tem seu próprio esquema de link pra abrir
+    // direto na caixa de entrada — não tem um jeito genérico de "abrir o
+    // email padrão" como existe pra outras coisas.
+    const esquemas = {
+      gmail: 'googlegmail://',
+      outlook: 'ms-outlook://',
+      nativo: 'message://',
+    };
+    const url = esquemas[appEscolhido] || esquemas.gmail;
     try {
-      // Abre o Gmail de verdade (direto na caixa de entrada), usando o
-      // nome interno do pacote do app no Android — é o jeito confiável
-      // de fazer isso, diferente de um link comum que só sabe compor
-      // um email novo. Carregado dinamicamente aqui dentro (e não no
-      // topo do arquivo) porque esse módulo só existe no Android.
+      const podeAbrir = await Linking.canOpenURL(url);
+      if (podeAbrir) {
+        await Linking.openURL(url);
+        return;
+      }
+    } catch (e) {
+      // segue pro reserva abaixo
+    }
+    try {
+      await Linking.openURL('mailto:');
+      Alert.alert('App não encontrado', 'Abri o app de email padrão, já que não achei o app escolhido instalado.');
+    } catch (e2) {
+      Alert.alert('Não consegui abrir', 'Não achei nenhum app de email instalado no celular.');
+    }
+    return;
+  }
+
+  // Android: usa o nome interno do pacote de cada app, via
+  // expo-intent-launcher — carregado dinamicamente porque esse módulo só
+  // existe no Android.
+  //
+  // Atenção: o Android 11+ só deixa o app "enxergar" outro app se o
+  // manifesto declarar isso. Hoje quem declara é o expo-mail-composer
+  // (ele diz que enxerga qualquer app que abre mailto:, e Gmail e Outlook
+  // abrem). Se um dia o expo-mail-composer for removido do projeto, isso
+  // aqui para de achar o Gmail/Outlook e cai sempre no aviso de reserva.
+  const pacotes = {
+    gmail: 'com.google.android.gm',
+    outlook: 'com.microsoft.office.outlook',
+  };
+  if (appEscolhido !== 'nativo' && pacotes[appEscolhido]) {
+    try {
       const IntentLauncher = await import('expo-intent-launcher');
-      await IntentLauncher.openApplication('com.google.android.gm');
+      await IntentLauncher.openApplication(pacotes[appEscolhido]);
       return;
     } catch (e) {
-      // Gmail não instalado, ou algo impediu — cai pro comportamento
-      // padrão de compor um email novo, avisando o motivo.
+      // app não instalado, ou algo impediu — cai pro reserva abaixo
     }
   }
   try {
     await Linking.openURL('mailto:');
-    Alert.alert('Gmail não encontrado', 'Abri o app de email padrão pra escrever, já que não achei o Gmail instalado.');
+    Alert.alert('App não encontrado', 'Abri o app de email padrão, já que não achei o app escolhido instalado.');
   } catch (e2) {
     Alert.alert('Não consegui abrir', 'Não achei nenhum app de email instalado no celular.');
   }
@@ -79,7 +151,10 @@ export async function abrirComposerEmail() {
 }
 
 export async function abrirDiscador(numero) {
-  const url = numero ? `tel:${numero}` : 'tel:';
+  // O número vai exatamente como está na agenda (sem acrescentar código de
+  // país), só sem espaço e parênteses, que o endereço "tel:" não aceita.
+  const limpo = numero ? limparNumeroParaDiscagem(numero).replace(/#/g, '%23') : '';
+  const url = limpo ? `tel:${limpo}` : 'tel:';
   try {
     await Linking.openURL(url);
   } catch (e) {

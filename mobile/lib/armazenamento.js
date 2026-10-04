@@ -5,6 +5,72 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const CHAVE_NOME = '@evie/nome_usuario';
 const CHAVE_ULTIMA_SAUDACAO = '@evie/ultima_saudacao_periodo';
 const CHAVE_PERSONALIDADE = '@evie/personalidade';
+const CHAVE_CALENDARIO_ESCOLHIDO = '@evie/calendario_escolhido_id';
+const CHAVE_SEPARAR_CATEGORIAS = '@evie/separar_pessoal_profissional';
+const CHAVE_APP_EMAIL_ESCOLHIDO = '@evie/app_email_escolhido';
+
+// 'gmail' | 'outlook' | 'nativo' — controla qual aplicativo abre quando a
+// pessoa toca no atalho "Email". Sem nada salvo ainda, usa 'gmail' como
+// padrão (mantém o comportamento de sempre).
+export async function buscarAppEmailEscolhido() {
+  try {
+    return (await AsyncStorage.getItem(CHAVE_APP_EMAIL_ESCOLHIDO)) || 'gmail';
+  } catch (e) {
+    console.error('[armazenamento] erro ao buscar app de email escolhido:', e);
+    return 'gmail';
+  }
+}
+
+export async function salvarAppEmailEscolhido(app) {
+  try {
+    await AsyncStorage.setItem(CHAVE_APP_EMAIL_ESCOLHIDO, app);
+  } catch (e) {
+    console.error('[armazenamento] erro ao salvar app de email escolhido:', e);
+  }
+}
+
+// Controla se a Evie pergunta "pessoal ou profissional" e usa calendários
+// separados pra cada um, ou se trata tudo igual, sempre no mesmo
+// calendário escolhido. Por padrão (nada salvo ainda) mantém o
+// comportamento de sempre: true = separa.
+export async function buscarSepararCategorias() {
+  try {
+    const valor = await AsyncStorage.getItem(CHAVE_SEPARAR_CATEGORIAS);
+    return valor === null ? true : valor === 'true';
+  } catch (e) {
+    console.error('[armazenamento] erro ao buscar preferência de categorias:', e);
+    return true;
+  }
+}
+
+export async function salvarSepararCategorias(separar) {
+  try {
+    await AsyncStorage.setItem(CHAVE_SEPARAR_CATEGORIAS, separar ? 'true' : 'false');
+  } catch (e) {
+    console.error('[armazenamento] erro ao salvar preferência de categorias:', e);
+  }
+}
+
+export async function buscarCalendarioEscolhidoId() {
+  try {
+    return await AsyncStorage.getItem(CHAVE_CALENDARIO_ESCOLHIDO);
+  } catch (e) {
+    console.error('[armazenamento] erro ao buscar calendário escolhido:', e);
+    return null;
+  }
+}
+
+export async function salvarCalendarioEscolhidoId(id) {
+  try {
+    if (id) {
+      await AsyncStorage.setItem(CHAVE_CALENDARIO_ESCOLHIDO, id);
+    } else {
+      await AsyncStorage.removeItem(CHAVE_CALENDARIO_ESCOLHIDO);
+    }
+  } catch (e) {
+    console.error('[armazenamento] erro ao salvar calendário escolhido:', e);
+  }
+}
 
 export async function buscarNomeUsuario() {
   try {

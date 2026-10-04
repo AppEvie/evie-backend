@@ -15,6 +15,7 @@ import {
   KeyboardAvoidingView,
   Animated,
   Dimensions,
+  Switch,
 } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
@@ -48,11 +49,13 @@ import {
   cancelarEventoPorTitulo,
   cancelarEventoPorId,
   normalizar,
+  listarCalendariosDisponiveis,
 } from '../lib/calendar';
 import { abrirRascunhoEmail } from '../lib/email';
-import { chavePeriodoAtual, buscarUltimaSaudacao, salvarUltimaSaudacao } from '../lib/armazenamento';
+import { chavePeriodoAtual, buscarUltimaSaudacao, salvarUltimaSaudacao, buscarCalendarioEscolhidoId, salvarCalendarioEscolhidoId, buscarSepararCategorias, salvarSepararCategorias, buscarAppEmailEscolhido, salvarAppEmailEscolhido } from '../lib/armazenamento';
 import { listarDocumentos, salvarDocumento, removerDocumento, salvarImagemPermanente, vincularDocumentoAoEvento } from '../lib/documentos';
-import { salvarImagemSomaPermanente, salvarSoma, listarSomas, removerSoma, atualizarSoma, listarNomesDePastaUsados } from '../lib/somas';
+import { salvarImagemSomaPermanente, salvarSoma, listarSomas, removerSoma, atualizarSoma, listarPastasMae, criarPastaMae, removerPastaMae, renomearSoma, renomearPastaMae } from '../lib/somas';
+import { chaveNome, formatarReais, montarEstrutura } from '../lib/somasEstrutura';
 import { salvarImagemSintesePermanente, salvarSintese, listarSinteses, removerSintese } from '../lib/sinteses';
 import { salvarPost, listarPosts, removerPost } from '../lib/posts';
 import { carregarEntradas, salvarEntradas } from '../lib/entradas';
@@ -69,6 +72,10 @@ const ALTURA_TELA = Dimensions.get('window').height;
 
 // ---- Paleta "executiva": navy profundo, papel neutro e latão — em vez
 // da estética mais informal de caderno de anotações. ----
+// Nome do agrupador de subpastas, que aparece em vários textos. Pra trocar
+// por outro nome masculino (ex: "Projeto"), basta mudar aqui.
+const ROTULO_MAE = { nome: 'Controle', baixo: 'controle' };
+
 const COR = {
   papel: '#E4E4E1',
   cartao: '#FFFFFF',
@@ -299,12 +306,53 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   const [modalConfigAberto, setModalConfigAberto] = useState(false);
   const [nomeEditando, setNomeEditando] = useState('');
   const [personalidadeEditando, setPersonalidadeEditando] = useState('');
+  const [calendariosDisponiveis, setCalendariosDisponiveis] = useState([]);
+  const [calendarioEscolhidoId, setCalendarioEscolhidoId] = useState(null);
+  const [carregandoCalendarios, setCarregandoCalendarios] = useState(false);
+  const [separarCategorias, setSepararCategorias] = useState(true);
+  const [appEmailEscolhido, setAppEmailEscolhido] = useState('gmail');
 
   const abrirConfiguracoes = useCallback(() => {
     setNomeEditando(nomeUsuario || '');
     setPersonalidadeEditando(personalidade || '');
     setModalConfigAberto(true);
+
+    // Carrega a lista de calendários disponíveis no aparelho, sempre que
+    // abre Configurações — assim, se a pessoa mudar de conta ou adicionar
+    // um calendário novo (tipo Outlook) depois, a lista já vem atualizada.
+    (async () => {
+      setCarregandoCalendarios(true);
+      try {
+        const permitido = await pedirPermissaoAgenda();
+        if (!permitido) return;
+        const [lista, idSalvo] = await Promise.all([
+          listarCalendariosDisponiveis(),
+          buscarCalendarioEscolhidoId(),
+        ]);
+        setCalendariosDisponiveis(lista);
+        setCalendarioEscolhidoId(idSalvo);
+      } catch (e) {
+        console.log('[configuracoes] erro ao listar calendarios:', e?.message || e);
+      } finally {
+        setCarregandoCalendarios(false);
+      }
+    })();
   }, [nomeUsuario, personalidade]);
+
+  const escolherCalendario = useCallback(async (calendario) => {
+    setCalendarioEscolhidoId(calendario.id);
+    await salvarCalendarioEscolhidoId(calendario.id);
+  }, []);
+
+  const alternarSepararCategorias = useCallback(async (valor) => {
+    setSepararCategorias(valor);
+    await salvarSepararCategorias(valor);
+  }, []);
+
+  const escolherAppEmail = useCallback(async (app) => {
+    setAppEmailEscolhido(app);
+    await salvarAppEmailEscolhido(app);
+  }, []);
 
   // Primeira vez usando o app (sem nome salvo ainda) — abre Configurações
   // sozinha, pra pessoa já personalizar de cara, sem precisar de telas
@@ -453,14 +501,28 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   const [modalSomaAberto, setModalSomaAberto] = useState(false);
   const [arquivosSoma, setArquivosSoma] = useState([]); // [{uri, valor, tipoDocumento, processando}]
   const [nomePastaSoma, setNomePastaSoma] = useState('');
-  const [nomesPastaSugeridos, setNomesPastaSugeridos] = useState([]);
   const [somaAbertaDetalhe, setSomaAbertaDetalhe] = useState(null);
   const [processandoAdicaoNaSoma, setProcessandoAdicaoNaSoma] = useState(false);
+  const [nomePastaMaeSoma, setNomePastaMaeSoma] = useState('');
+  const [pastaMaeAberta, setPastaMaeAberta] = useState(null);
+  const maeOrigemRef = useRef(null);
+  const [pastasMae, setPastasMae] = useState([]);
+  const [modalNovaMaeAberto, setModalNovaMaeAberto] = useState(false);
+  const [nomeNovaMae, setNomeNovaMae] = useState('');
+  const [renomeando, setRenomeando] = useState(null); // null, 'mae' ou 'soma'
+  const [textoRenomear, setTextoRenomear] = useState('');
 
   useEffect(() => {
     acordarServidor();
+    buscarSepararCategorias().then(setSepararCategorias);
+    buscarAppEmailEscolhido().then(setAppEmailEscolhido);
     listarDocumentos().then(setDocumentos);
-    listarSomas().then(setSomasGuardadas);
+    listarSomas()
+      .then((lista) => {
+        setSomasGuardadas(lista);
+        return listarPastasMae();
+      })
+      .then(setPastasMae);
     listarPosts().then(setHistoricoPosts);
     buscarPerfilProfissional().then(setPerfilProfissional);
     listarSinteses().then(setHistoricoSinteses);
@@ -983,27 +1045,56 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     [arquivosSoma]
   );
 
-  const abrirModalSoma = useCallback(async () => {
-    setArquivosSoma([]);
-    setNomePastaSoma('');
-    const nomes = await listarNomesDePastaUsados();
-    setNomesPastaSugeridos(nomes);
-    setModalSomaAberto(true);
+  // Abre a tela de nova subpasta, já dentro de um controle (botão "Nova
+  // subpasta"). É o único caminho pra ela. O cartão do controle fecha antes,
+  // porque no iPhone duas telas sobrepostas ao mesmo tempo não aparecem
+  // direito: a nova abre um instante depois.
+  const novaSubpastaNaMae = useCallback((nomeMae) => {
+    setPastaMaeAberta(null);
+    setSomaAbertaDetalhe(null);
+    setTimeout(() => {
+      setArquivosSoma([]);
+      setNomePastaSoma('');
+      setNomePastaMaeSoma(nomeMae);
+      maeOrigemRef.current = nomeMae;
+      setModalSomaAberto(true);
+    }, 450);
+  }, []);
+
+  // Depois de salvar ou descartar uma soma que começou dentro de uma pasta
+  // mãe, volta pra ela.
+  const voltarParaMaeDeOrigem = useCallback(() => {
+    const nomeMae = maeOrigemRef.current;
+    maeOrigemRef.current = null;
+    if (nomeMae) setTimeout(() => setPastaMaeAberta(nomeMae), 450);
+  }, []);
+
+  const fecharCartaoPasta = useCallback(() => {
+    setSomaAbertaDetalhe(null);
+    setPastaMaeAberta(null);
   }, []);
 
   const descartarSomaAtual = useCallback(() => {
     setModalSomaAberto(false);
     setArquivosSoma([]);
     setNomePastaSoma('');
-  }, []);
+    setNomePastaMaeSoma('');
+    voltarParaMaeDeOrigem();
+  }, [voltarParaMaeDeOrigem]);
 
   const salvarSomaAtual = useCallback(async () => {
-    if (!nomePastaSoma.trim()) {
-      Alert.alert('Falta o nome da pasta', 'Digite um nome pra organizar essa soma antes de salvar.');
+    const nomeMae = nomePastaMaeSoma.trim();
+    if (!nomeMae) {
+      Alert.alert('Falta o controle', 'Abra um controle e toque em Nova subpasta.');
       return;
     }
-    if (arquivosSoma.length === 0) {
-      Alert.alert('Nenhum arquivo', 'Adicione pelo menos uma nota ou fatura antes de salvar.');
+    if (!nomePastaSoma.trim()) {
+      Alert.alert(
+        nomeMae ? 'Falta o nome da subpasta' : 'Falta o nome da pasta',
+        nomeMae
+          ? 'Digite o nome da subpasta antes de salvar.'
+          : 'Digite um nome pra organizar essa soma antes de salvar.'
+      );
       return;
     }
     try {
@@ -1018,21 +1109,30 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
       const novaSoma = {
         id: String(Date.now()),
         pasta: nomePastaSoma.trim(),
+        ...(nomeMae ? { pastaMae: nomeMae } : {}),
         total: totalSomaAtual,
         arquivos: arquivosPermanentes,
         data: new Date().toISOString(),
       };
       const listaAtualizada = await salvarSoma(novaSoma);
       setSomasGuardadas(listaAtualizada);
+      setPastasMae(await listarPastasMae());
       setModalSomaAberto(false);
       setArquivosSoma([]);
       setNomePastaSoma('');
-      mostrar(`Soma salva em "${novaSoma.pasta}" — total de R$ ${totalSomaAtual.toFixed(2).replace('.', ',')}.`);
+      setNomePastaMaeSoma('');
+      voltarParaMaeDeOrigem();
+      const caminho = nomeMae ? `${nomeMae} › ${novaSoma.pasta}` : novaSoma.pasta;
+      mostrar(
+        arquivosSoma.length === 0
+          ? `Criado "${caminho}".`
+          : `Salvo em "${caminho}" — R$ ${formatarReais(totalSomaAtual)} adicionados.`
+      );
     } catch (e) {
       console.error('[soma] erro ao salvar:', e);
       Alert.alert('Não consegui salvar', `Motivo técnico: ${e?.message || String(e)}`);
     }
-  }, [nomePastaSoma, arquivosSoma, totalSomaAtual]);
+  }, [nomePastaSoma, nomePastaMaeSoma, arquivosSoma, totalSomaAtual, voltarParaMaeDeOrigem]);
 
   const excluirSomaGuardada = useCallback(async (id) => {
     const listaAtualizada = await removerSoma(id);
@@ -1047,20 +1147,15 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     const novosArquivos = somaAbertaDetalhe.arquivos.filter((_, i) => i !== indice);
     const novoTotal = novosArquivos.reduce((acc, a) => acc + parseValorBR(a.valor), 0);
 
-    if (novosArquivos.length === 0) {
-      // Sem arquivo nenhum sobrando, não faz sentido manter a soma —
-      // apaga ela inteira em vez de deixar um registro vazio.
-      await excluirSomaGuardada(somaAbertaDetalhe.id);
-      return;
-    }
-
+    // Mesmo sem nenhuma nota sobrando, a pasta continua existindo (vazia,
+    // com total zero): quem apaga a pasta é o botão Excluir, de propósito.
     const listaAtualizada = await atualizarSoma(somaAbertaDetalhe.id, {
       arquivos: novosArquivos,
       total: novoTotal,
     });
     setSomasGuardadas(listaAtualizada);
     setSomaAbertaDetalhe({ ...somaAbertaDetalhe, arquivos: novosArquivos, total: novoTotal });
-  }, [somaAbertaDetalhe, excluirSomaGuardada]);
+  }, [somaAbertaDetalhe]);
 
   // Adiciona mais um arquivo direto numa soma que já foi salva antes,
   // recalculando o total dela — sem precisar criar um registro novo.
@@ -1131,19 +1226,130 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     }
   }, [somaAbertaDetalhe, personalidade]);
 
-  // Agrupa as somas guardadas por nome de pasta, pra exibir organizadinho.
-  const somasPorPasta = useMemo(() => {
-    const grupos = {};
-    somasGuardadas.forEach((s) => {
-      if (!grupos[s.pasta]) grupos[s.pasta] = [];
-      grupos[s.pasta].push(s);
-    });
-    return Object.entries(grupos).map(([pasta, itens]) => ({
-      pasta,
-      itens,
-      totalPasta: itens.reduce((acc, s) => acc + (s.total || 0), 0),
-    }));
-  }, [somasGuardadas]);
+  // Monta o que a tela mostra: pastas simples e pastas mãe (com subpastas
+  // e o total de todas elas somado).
+  const estruturaSomas = useMemo(
+    () => montarEstrutura(somasGuardadas, pastasMae.map((m) => m.nome)),
+    [somasGuardadas, pastasMae]
+  );
+
+  const pastaMaeAtual = useMemo(() => {
+    if (!pastaMaeAberta) return null;
+    const chave = chaveNome(pastaMaeAberta);
+    return estruturaSomas.find((i) => i.tipo === 'mae' && chaveNome(i.nome) === chave) || null;
+  }, [estruturaSomas, pastaMaeAberta]);
+
+  // Sugestões do formulário: pastas mãe que já existem e, dentro da mãe
+  // digitada (ou entre as pastas simples, se não tem mãe), os nomes já usados.
+  const sugestoesSubpasta = useMemo(() => {
+    const chaveMae = chaveNome(nomePastaMaeSoma);
+    const nomes = somasGuardadas
+      .filter((s) => chaveNome(s.pastaMae) === chaveMae)
+      .map((s) => s.pasta)
+      .filter(Boolean);
+    return [...new Set(nomes)];
+  }, [somasGuardadas, nomePastaMaeSoma]);
+
+  // Se a última subpasta de uma pasta mãe for apagada, a mãe some junto:
+  // fecha o cartão em vez de mostrar uma pasta vazia.
+  useEffect(() => {
+    if (pastaMaeAberta && !somaAbertaDetalhe && !pastaMaeAtual) setPastaMaeAberta(null);
+  }, [pastaMaeAberta, somaAbertaDetalhe, pastaMaeAtual]);
+
+  const confirmarExclusaoSoma = useCallback((soma) => {
+    const notas = (soma.arquivos || []).length;
+    const mensagem = notas === 0
+      ? `"${soma.pasta}" será apagada.`
+      : `"${soma.pasta}" e ${notas === 1 ? 'a nota' : `as ${notas} notas`} dentro dela serão apagadas, junto com o total.`;
+    Alert.alert(soma.pastaMae ? 'Excluir subpasta?' : 'Excluir pasta?', mensagem, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: () => excluirSomaGuardada(soma.id) },
+    ]);
+  }, [excluirSomaGuardada]);
+
+  // Excluir o agrupador leva junto as subpastas e as notas dentro dele.
+  const confirmarExclusaoMae = useCallback((mae) => {
+    const n = mae.subpastas.length;
+    const mensagem = n === 0
+      ? `"${mae.nome}" será apagado.`
+      : `Vai apagar "${mae.nome}" com todo o conteúdo (${n} subpasta${n === 1 ? '' : 's'}, ${mae.notas} nota${mae.notas === 1 ? '' : 's'}). Não dá pra desfazer.`;
+    Alert.alert(`Excluir ${ROTULO_MAE.baixo}?`, mensagem, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          const { somas, maes } = await removerPastaMae(mae.nome);
+          setSomasGuardadas(somas);
+          setPastasMae(maes);
+          fecharCartaoPasta();
+        },
+      },
+    ]);
+  }, [fecharCartaoPasta]);
+
+  const abrirModalNovaMae = useCallback(() => {
+    setNomeNovaMae('');
+    setModalNovaMaeAberto(true);
+  }, []);
+
+  // Cria o agrupador vazio e já abre ele, pronto pra receber subpastas. A
+  // abertura espera um instante: no iPhone uma tela só aparece depois que a
+  // anterior terminou de fechar.
+  const criarNovaMae = useCallback(async () => {
+    const nome = nomeNovaMae.trim();
+    if (!nome) {
+      Alert.alert(`Falta o nome do ${ROTULO_MAE.baixo}`, `Digite um nome pra criar o ${ROTULO_MAE.baixo}.`);
+      return;
+    }
+    const maes = await criarPastaMae(nome);
+    setPastasMae(maes);
+    setModalNovaMaeAberto(false);
+    setNomeNovaMae('');
+    setTimeout(() => setPastaMaeAberta(nome), 450);
+  }, [nomeNovaMae]);
+
+  const iniciarRenomear = useCallback((tipo, nomeAtual) => {
+    setTextoRenomear(nomeAtual);
+    setRenomeando(tipo);
+  }, []);
+
+  const confirmarRenomear = useCallback(async () => {
+    const novo = textoRenomear.trim();
+    if (!novo) {
+      Alert.alert('Falta o nome', 'Digite um nome antes de salvar.');
+      return;
+    }
+    if (renomeando === 'soma' && somaAbertaDetalhe) {
+      const r = await renomearSoma(somaAbertaDetalhe.id, novo);
+      if (r.erro) {
+        Alert.alert(
+          'Nome repetido',
+          somaAbertaDetalhe.pastaMae
+            ? 'Já existe uma subpasta com esse nome aqui.'
+            : 'Já existe uma pasta com esse nome.'
+        );
+        return;
+      }
+      setSomasGuardadas(r.somas);
+      setSomaAbertaDetalhe((atual) => (atual ? { ...atual, pasta: novo } : atual));
+    } else if (renomeando === 'mae' && pastaMaeAtual) {
+      const r = await renomearPastaMae(pastaMaeAtual.nome, novo);
+      if (r.erro) {
+        Alert.alert('Nome repetido', `Já existe um ${ROTULO_MAE.baixo} com esse nome.`);
+        return;
+      }
+      setSomasGuardadas(r.somas);
+      setPastasMae(r.maes);
+      setPastaMaeAberta(novo);
+    }
+    setRenomeando(null);
+  }, [textoRenomear, renomeando, somaAbertaDetalhe, pastaMaeAtual]);
+
+  // Se a pessoa navegar pra outra pasta no meio da edição do nome, cancela.
+  useEffect(() => {
+    setRenomeando(null);
+  }, [somaAbertaDetalhe?.id, pastaMaeAberta]);
 
   // Depois de guardar o documento, sempre pergunta se quer um lembrete —
   // se ela achou uma data de vencimento, oferece ela pronta; senão, deixa
@@ -1180,28 +1386,12 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
           falar(respostaFaladaPronta);
         } else {
           falarGerado(
-            `Você acabou de marcar um compromisso ${categoria} na agenda do usuário com sucesso. Confirme rapidinho.`,
+            `Você acabou de marcar ${categoria ? `um compromisso ${categoria}` : 'um compromisso'} na agenda do usuário com sucesso. Confirme rapidinho.`,
             personalidade,
             frasePersonalizada('pronto', personalidade)
           );
         }
       } catch (erroCriacao) {
-        if (erroCriacao?.message === 'AGENDA_PROFISSIONAL_INDISPONIVEL') {
-          console.log('[agenda] agenda Profissional indisponível, salvando na Pessoal como reserva e avisando.');
-          try {
-            await criarEventoNaAgenda(agenda, 'pessoal');
-            await recarregarAgenda();
-          } catch (erroReserva) {
-            console.error('[agenda] até a reserva na Pessoal falhou:', erroReserva);
-          }
-          mostrar('Não consegui criar a agenda Profissional automaticamente — salvei em Pessoal por enquanto.');
-          falarGerado(
-            'Você tentou marcar um compromisso profissional, mas o celular não deixou criar uma agenda "Profissional" nova automaticamente — isso é uma limitação do Android, só o app oficial do Google Agenda pode criar agendas novas. Avise o usuário que salvou o compromisso em "Pessoal" por enquanto, e explique rapidinho que ele pode abrir o app do Google Agenda e criar manualmente uma agenda chamada exatamente "Profissional" (com esse nome certinho) — depois disso a Evie passa a usar ela sozinha.',
-            personalidade,
-            'Não consegui criar a agenda Profissional automaticamente, então salvei esse compromisso em Pessoal. Pra separar de vez, abre o Google Agenda e cria manualmente uma agenda chamada "Profissional" — aí eu passo a usar ela sozinha.'
-          );
-          return;
-        }
         console.error('[agenda] erro ao criar o evento de verdade:', erroCriacao);
         mostrar('Não consegui marcar esse compromisso na agenda. Tenta de novo.');
         falarGerado(
@@ -1508,6 +1698,12 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
         if (!permitido) {
           mostrar('Preciso de permissão pra acessar sua agenda. Ative em Configurações > Apps > Evie > Permissões.');
           falarGerado('O usuário pediu pra marcar um compromisso, mas você (a assistente) ainda não tem permissão pra acessar a agenda do celular dele. Avise disso, pedindo pra ele liberar o acesso nas configurações do app.', personalidade, frasePersonalizada('erroPermissaoAgenda', personalidade));
+        } else if (!separarCategorias) {
+          // A pessoa desligou a separação pessoal/profissional em
+          // Configurações — nunca pergunta, sempre cria direto no único
+          // calendário escolhido, ignorando qualquer categoria que a IA
+          // tenha sugerido.
+          await criarCompromissoComCategoria(resultado.agenda, null, resultado.resposta_falada);
         } else if (resultado.agenda.categoria === 'pessoal' || resultado.agenda.categoria === 'profissional') {
           await criarCompromissoComCategoria(resultado.agenda, resultado.agenda.categoria, resultado.resposta_falada);
         } else {
@@ -1950,6 +2146,34 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     }
   }, []);
 
+  // Apaga um compromisso direto do calendário de verdade (não só da
+  // lista aqui na tela) — pede confirmação antes, já que é uma ação sem
+  // volta, e atualiza tanto a lista desse modal quanto o resto do app
+  // (cartão de briefing, "agenda do mês", etc) depois de apagar.
+  const excluirCompromissoDoMes = useCallback((evento) => {
+    Alert.alert(
+      'Excluir compromisso?',
+      `"${evento.titulo}" será apagado do seu calendário também, não só daqui.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancelarEventoPorId(evento.id);
+              setCompromissosDoMes((prev) => prev.filter((e) => e.id !== evento.id));
+              await recarregarAgenda();
+            } catch (e) {
+              console.error('[agenda] erro ao excluir compromisso:', e);
+              Alert.alert('Não consegui excluir', 'Tenta de novo em instantinho.');
+            }
+          },
+        },
+      ]
+    );
+  }, [recarregarAgenda]);
+
   // Agenda as notificações diárias (8h e 20h) uma vez, assim que sabemos o
   // nome da pessoa. Reagendar é seguro (não duplica, só substitui).
   useEffect(() => {
@@ -2294,39 +2518,42 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
         </View>
 
         <View style={styles.mesa}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <View style={styles.statsIconeBox}>
               <FontAwesome name="file-text-o" size={13} color={COR.dourado} />
             </View>
-            <Text style={styles.mesaTitulo} numberOfLines={1}>Somar notas/faturas</Text>
+            <Text style={styles.mesaTitulo} numberOfLines={1}>Controle financeiro</Text>
           </View>
-          <TouchableOpacity activeOpacity={0.8} onPress={abrirModalSoma}>
+          <Text style={[styles.linhaSub, { marginBottom: 12 }]}>Organize e some suas notas e faturas por pasta</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={abrirModalNovaMae}>
             <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoNovoLargo}>
               <FontAwesome name="plus" size={12} color="#FFFFFF" />
-              <Text style={styles.somaBotaoNovoTexto}>Nova soma</Text>
+              <Text style={styles.somaBotaoNovoTexto}>{`Novo ${ROTULO_MAE.baixo}`}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          {somasPorPasta.length === 0 ? (
-            <Text style={[styles.vazio, { marginTop: 12 }]}>Some várias notas ou faturas de uma vez, e guarde organizado por pasta.</Text>
+          {estruturaSomas.length === 0 ? (
+            <Text style={[styles.vazio, { marginTop: 12 }]}>{`Crie um ${ROTULO_MAE.baixo} com subpastas pra acompanhar seus gastos, como uma reforma ou uma viagem.`}</Text>
           ) : (
-            somasPorPasta.map((grupo) => (
-              <View key={grupo.pasta} style={styles.somaPastaLinha}>
+            estruturaSomas.map((item) => (
+              <TouchableOpacity
+                key={`${item.tipo}-${item.nome}`}
+                activeOpacity={0.7}
+                style={styles.somaPastaLinha}
+                onPress={() => (item.tipo === 'mae' ? setPastaMaeAberta(item.nome) : setSomaAbertaDetalhe(item.soma))}
+              >
                 <FontAwesome name="folder" size={13} color={COR.dourado} />
                 <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={styles.linhaTitulo}>{grupo.pasta}</Text>
+                  <Text style={styles.linhaTitulo} numberOfLines={1}>{item.nome}</Text>
                   <Text style={styles.linhaSub}>
-                    {grupo.itens.length} soma{grupo.itens.length > 1 ? 's' : ''} · total R${' '}
-                    {grupo.totalPasta.toFixed(2).replace('.', ',')}
+                    {item.tipo === 'mae'
+                      ? `${item.subpastas.length} subpasta${item.subpastas.length === 1 ? '' : 's'}`
+                      : `${item.notas} nota${item.notas === 1 ? '' : 's'}`}
+                    {' · total R$ '}{formatarReais(item.total)}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setSomaAbertaDetalhe(grupo.itens[0])}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <FontAwesome name="chevron-right" size={14} color={COR.tintaSuave} />
-                </TouchableOpacity>
-              </View>
+                <FontAwesome name="chevron-right" size={14} color={COR.tintaSuave} />
+              </TouchableOpacity>
             ))
           )}
         </View>
@@ -2612,6 +2839,13 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                         <FontAwesome name="paperclip" size={16} color={COR.dourado} />
                       </TouchableOpacity>
                     )}
+                    <TouchableOpacity
+                      onPress={() => excluirCompromissoDoMes(e)}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      style={{ marginLeft: 12 }}
+                    >
+                      <FontAwesome name="trash-o" size={16} color={COR.tintaSuave} />
+                    </TouchableOpacity>
                   </View>
                 ))
               )}
@@ -3220,7 +3454,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                     const mensagem = contatosEncontrados.mensagem;
                     setContatosEncontrados(null);
                     if (acao === 'whatsapp') {
-                      abrirWhatsapp(contato.numero, mensagem);
+                      abrirWhatsapp(contato.numeroWhatsapp, mensagem);
                     } else {
                       abrirDiscador(contato.numero);
                     }
@@ -3296,7 +3530,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
             <TouchableOpacity onPress={descartarSomaAtual} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <FontAwesome name="chevron-left" size={20} color={COR.tinta} />
             </TouchableOpacity>
-            <Text style={styles.telaDocumentosTitulo}>Somar notas/faturas</Text>
+            <Text style={styles.telaDocumentosTitulo}>Nova subpasta</Text>
             <View style={{ width: 20 }} />
           </View>
 
@@ -3349,21 +3583,27 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
             {arquivosSoma.length > 0 && (
               <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaTotalCartao}>
                 <Text style={styles.somaTotalLabel}>TOTAL</Text>
-                <Text style={styles.somaTotalValor}>R$ {totalSomaAtual.toFixed(2).replace('.', ',')}</Text>
+                <Text style={styles.somaTotalValor}>R$ {formatarReais(totalSomaAtual)}</Text>
               </LinearGradient>
             )}
 
-            <Text style={[styles.configLabel, { marginTop: 20 }]}>Nome da pasta pra guardar</Text>
+            <Text style={[styles.configLabel, { marginTop: 20 }]}>{ROTULO_MAE.nome}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
+              <FontAwesome name="folder" size={14} color={COR.dourado} />
+              <Text style={styles.linhaTitulo} numberOfLines={1}>{nomePastaMaeSoma}</Text>
+            </View>
+
+            <Text style={[styles.configLabel, { marginTop: 18 }]}>Subpasta</Text>
             <TextInput
               style={styles.configInput}
               value={nomePastaSoma}
               onChangeText={setNomePastaSoma}
-              placeholder="Ex: Notas fiscais de Agosto"
+              placeholder="Ex: Material"
               placeholderTextColor={COR.tintaSuave}
             />
-            {nomesPastaSugeridos.length > 0 && (
+            {sugestoesSubpasta.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                {nomesPastaSugeridos.map((nome) => (
+                {sugestoesSubpasta.map((nome) => (
                   <TouchableOpacity key={nome} style={styles.somaChipSugestao} onPress={() => setNomePastaSoma(nome)}>
                     <Text style={styles.somaChipSugestaoTexto}>{nome}</Text>
                   </TouchableOpacity>
@@ -3388,78 +3628,275 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
       </Modal>
 
       <Modal
-        visible={!!somaAbertaDetalhe}
+        visible={!!somaAbertaDetalhe || !!pastaMaeAberta}
         animationType="slide"
         transparent
-        onRequestClose={() => setSomaAbertaDetalhe(null)}
+        onRequestClose={() => (somaAbertaDetalhe && pastaMaeAberta ? setSomaAbertaDetalhe(null) : fecharCartaoPasta())}
       >
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.modalFundo}>
           <View style={styles.modalCartao}>
-            <View style={styles.modalTopo}>
-              <Text style={styles.modalTitulo}>{somaAbertaDetalhe?.pasta}</Text>
-              <TouchableOpacity
-                onPress={() => setSomaAbertaDetalhe(null)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <FontAwesome name="times" size={20} color={COR.tintaSuave} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ maxHeight: 380 }}>
-              {(somaAbertaDetalhe?.arquivos || []).map((a, i) => (
-                <View key={i} style={styles.linha}>
-                  {a.ehPdf ? (
-                    <View style={[styles.docMiniatura, styles.pdfMiniaturaBox]}>
-                      <FontAwesome name="file-pdf-o" size={20} color={COR.ferrugem} />
+            {somaAbertaDetalhe ? (
+              <>
+                <View style={styles.modalTopo}>
+                  {renomeando === 'soma' ? (
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <TextInput
+                        style={[styles.configInput, { flex: 1, paddingVertical: 8 }]}
+                        value={textoRenomear}
+                        onChangeText={setTextoRenomear}
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={confirmarRenomear}
+                        placeholderTextColor={COR.tintaSuave}
+                      />
+                      <TouchableOpacity onPress={confirmarRenomear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <FontAwesome name="check" size={18} color="#164A87" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRenomeando(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <FontAwesome name="times" size={18} color={COR.tintaSuave} />
+                      </TouchableOpacity>
                     </View>
                   ) : (
-                    <Image source={{ uri: a.uri }} style={styles.docMiniatura} />
+                    <>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                        {!!pastaMaeAberta && (
+                          <TouchableOpacity
+                            onPress={() => setSomaAbertaDetalhe(null)}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          >
+                            <FontAwesome name="chevron-left" size={16} color={COR.tintaSuave} />
+                          </TouchableOpacity>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.modalTitulo} numberOfLines={1}>{somaAbertaDetalhe.pasta}</Text>
+                          {!!somaAbertaDetalhe.pastaMae && (
+                            <Text style={styles.linhaSub} numberOfLines={1}>em {somaAbertaDetalhe.pastaMae}</Text>
+                          )}
+                        </View>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+                        <TouchableOpacity
+                          onPress={() => iniciarRenomear('soma', somaAbertaDetalhe.pasta)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <FontAwesome name="pencil" size={17} color={COR.tintaSuave} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={fecharCartaoPasta}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <FontAwesome name="times" size={20} color={COR.tintaSuave} />
+                        </TouchableOpacity>
+                      </View>
+                    </>
                   )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.linhaTitulo} numberOfLines={1}>{a.tipoDocumento}</Text>
-                    <Text style={styles.linhaSub}>R$ {a.valor}</Text>
-                  </View>
+                </View>
+
+                <ScrollView style={{ maxHeight: 380 }}>
+                  {(somaAbertaDetalhe.arquivos || []).length === 0 && (
+                    <Text style={[styles.vazio, { marginVertical: 14 }]}>
+                      Nenhuma nota aqui ainda. Toque em Adicionar pra incluir a primeira.
+                    </Text>
+                  )}
+                  {(somaAbertaDetalhe.arquivos || []).map((a, i) => (
+                    <View key={i} style={styles.linha}>
+                      {a.ehPdf ? (
+                        <View style={[styles.docMiniatura, styles.pdfMiniaturaBox]}>
+                          <FontAwesome name="file-pdf-o" size={20} color={COR.ferrugem} />
+                        </View>
+                      ) : (
+                        <Image source={{ uri: a.uri }} style={styles.docMiniatura} />
+                      )}
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.linhaTitulo} numberOfLines={1}>{a.tipoDocumento}</Text>
+                        <Text style={styles.linhaSub}>R$ {a.valor}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => removerArquivoDeSomaSalva(i)}
+                        style={styles.linhaExcluir}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <FontAwesome name="trash-o" size={16} color={COR.tintaSuave} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+
+                <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaTotalCartao}>
+                  <Text style={styles.somaTotalLabel}>TOTAL</Text>
+                  <Text style={styles.somaTotalValor}>
+                    R$ {formatarReais(somaAbertaDetalhe.total)}
+                  </Text>
+                </LinearGradient>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
                   <TouchableOpacity
-                    onPress={() => removerArquivoDeSomaSalva(i)}
-                    style={styles.linhaExcluir}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={styles.somaBotaoDescartar}
+                    onPress={() => confirmarExclusaoSoma(somaAbertaDetalhe)}
                   >
-                    <FontAwesome name="trash-o" size={16} color={COR.tintaSuave} />
+                    <Text style={styles.somaBotaoDescartarTexto}>Excluir</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    disabled={processandoAdicaoNaSoma}
+                    onPress={adicionarArquivoNaSomaAberta}
+                  >
+                    <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoSalvar}>
+                    {processandoAdicaoNaSoma ? (
+                      <FontAwesome name="hourglass-half" size={14} color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.somaBotaoSalvarTexto}>Adicionar</Text>
+                    )}
+                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
-              ))}
-            </ScrollView>
+              </>
+            ) : pastaMaeAtual ? (
+              <>
+                <View style={styles.modalTopo}>
+                  {renomeando === 'mae' ? (
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <TextInput
+                        style={[styles.configInput, { flex: 1, paddingVertical: 8 }]}
+                        value={textoRenomear}
+                        onChangeText={setTextoRenomear}
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={confirmarRenomear}
+                        placeholderTextColor={COR.tintaSuave}
+                      />
+                      <TouchableOpacity onPress={confirmarRenomear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <FontAwesome name="check" size={18} color="#164A87" />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setRenomeando(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <FontAwesome name="times" size={18} color={COR.tintaSuave} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={[styles.modalTitulo, { flex: 1 }]} numberOfLines={1}>{pastaMaeAtual.nome}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 18 }}>
+                        <TouchableOpacity
+                          onPress={() => iniciarRenomear('mae', pastaMaeAtual.nome)}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <FontAwesome name="pencil" size={17} color={COR.tintaSuave} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={fecharCartaoPasta}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <FontAwesome name="times" size={20} color={COR.tintaSuave} />
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </View>
 
-            <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaTotalCartao}>
-              <Text style={styles.somaTotalLabel}>TOTAL</Text>
-              <Text style={styles.somaTotalValor}>
-                R$ {(somaAbertaDetalhe?.total || 0).toFixed(2).replace('.', ',')}
-              </Text>
-            </LinearGradient>
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-              <TouchableOpacity
-                style={styles.somaBotaoDescartar}
-                onPress={() => somaAbertaDetalhe && excluirSomaGuardada(somaAbertaDetalhe.id)}
-              >
-                <Text style={styles.somaBotaoDescartarTexto}>Excluir</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                disabled={processandoAdicaoNaSoma}
-                onPress={adicionarArquivoNaSomaAberta}
-              >
-                <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoSalvar}>
-                {processandoAdicaoNaSoma ? (
-                  <FontAwesome name="hourglass-half" size={14} color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.somaBotaoSalvarTexto}>Adicionar</Text>
-                )}
+                <LinearGradient
+                  colors={['#164A87', '#0A2C56']}
+                  style={[styles.somaTotalCartao, { flexDirection: 'column', alignItems: 'flex-start' }]}
+                >
+                  <Text style={styles.somaTotalLabel}>{`TOTAL DO ${ROTULO_MAE.baixo.toUpperCase()}`}</Text>
+                  <Text style={styles.somaTotalValor}>R$ {formatarReais(pastaMaeAtual.total)}</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11.5, marginTop: 2 }}>
+                    {pastaMaeAtual.subpastas.length} subpasta{pastaMaeAtual.subpastas.length === 1 ? '' : 's'}
+                    {' · '}{pastaMaeAtual.notas} nota{pastaMaeAtual.notas === 1 ? '' : 's'}
+                  </Text>
                 </LinearGradient>
-              </TouchableOpacity>
-            </View>
+
+                <ScrollView style={{ maxHeight: 320, marginTop: 8 }}>
+                  {pastaMaeAtual.subpastas.length === 0 ? (
+                    <Text style={[styles.vazio, { marginTop: 14, marginBottom: 6 }]}>
+                      Nenhuma subpasta ainda. Crie a primeira pra começar a organizar os gastos.
+                    </Text>
+                  ) : (
+                    pastaMaeAtual.subpastas.map((sub) => (
+                      <TouchableOpacity
+                        key={sub.nome}
+                        activeOpacity={0.7}
+                        style={styles.somaPastaLinha}
+                        onPress={() => setSomaAbertaDetalhe(sub.soma)}
+                      >
+                        <FontAwesome name="folder" size={13} color={COR.dourado} />
+                        <View style={{ flex: 1, marginLeft: 8 }}>
+                          <Text style={styles.linhaTitulo} numberOfLines={1}>{sub.nome}</Text>
+                          <Text style={styles.linhaSub}>{sub.notas} nota{sub.notas === 1 ? '' : 's'}</Text>
+                        </View>
+                        <Text style={styles.linhaTitulo}>R$ {formatarReais(sub.total)}</Text>
+                        <TouchableOpacity
+                          onPress={() => confirmarExclusaoSoma(sub.soma)}
+                          style={{ marginLeft: 14 }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <FontAwesome name="trash-o" size={16} color={COR.tintaSuave} />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </ScrollView>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity style={styles.somaBotaoDescartar} onPress={() => confirmarExclusaoMae(pastaMaeAtual)}>
+                    <Text style={styles.somaBotaoDescartarTexto}>{`Excluir ${ROTULO_MAE.baixo}`}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1 }} onPress={() => novaSubpastaNaMae(pastaMaeAtual.nome)}>
+                    <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoSalvar}>
+                      <Text style={styles.somaBotaoSalvarTexto}>Nova subpasta</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={modalNovaMaeAberto}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalNovaMaeAberto(false)}
+      >
+        <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalFundo}>
+            <View style={styles.modalCartao}>
+              <View style={styles.modalTopo}>
+                <Text style={styles.modalTitulo}>{`Novo ${ROTULO_MAE.baixo}`}</Text>
+                <TouchableOpacity
+                  onPress={() => setModalNovaMaeAberto(false)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <FontAwesome name="times" size={20} color={COR.tintaSuave} />
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.linhaSub, { marginTop: 4 }]}>
+                Agrupa subpastas, como Material e Mão de obra dentro de Reforma da casa.
+              </Text>
+              <Text style={[styles.configLabel, { marginTop: 16 }]}>{`Nome do ${ROTULO_MAE.baixo}`}</Text>
+              <TextInput
+                style={styles.configInput}
+                value={nomeNovaMae}
+                onChangeText={setNomeNovaMae}
+                placeholder="Ex: Reforma da casa"
+                placeholderTextColor={COR.tintaSuave}
+                autoFocus
+              />
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+                <TouchableOpacity style={styles.somaBotaoDescartar} onPress={() => setModalNovaMaeAberto(false)}>
+                  <Text style={styles.somaBotaoDescartarTexto}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={{ flex: 1 }} onPress={criarNovaMae}>
+                  <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoSalvar}>
+                    <Text style={styles.somaBotaoSalvarTexto}>Criar</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -3816,6 +4253,87 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   <FontAwesome name={op.icone} size={16} color={ativa ? COR.navy : COR.dourado} />
                   <Text style={styles.configOpcaoTexto}>{op.titulo}</Text>
                   {ativa && <FontAwesome name="check-circle" size={18} color={COR.dourado} />}
+                </TouchableOpacity>
+              );
+            })}
+
+            <View style={{ marginTop: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.configLabel}>Separar pessoal e profissional</Text>
+              <Switch
+                value={separarCategorias}
+                onValueChange={alternarSepararCategorias}
+                trackColor={{ false: COR.linha, true: COR.dourado }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <Text style={styles.lembreteSubtitulo}>
+              {separarCategorias
+                ? 'Ligado: a Evie pergunta "pessoal ou profissional" quando não está claro, e marca "(Profissional)" no título quando for o caso — só no calendário, nunca aqui no app.'
+                : 'Desligado: a Evie nunca pergunta isso, e cria os compromissos sem nenhuma marcação extra.'}
+            </Text>
+
+            <Text style={[styles.configLabel, { marginTop: 18 }]}>Calendário usado pela Evie</Text>
+            <Text style={styles.lembreteSubtitulo}>
+              Escolha em qual calendário do seu celular a Evie deve criar os compromissos. Pra usar Outlook/Microsoft, adicione a conta em Ajustes → Calendário do seu celular primeiro — ela aparece aqui automaticamente.
+            </Text>
+            {carregandoCalendarios ? (
+              <Text style={[styles.lembreteSubtitulo, { marginTop: 8 }]}>Carregando calendários...</Text>
+            ) : calendariosDisponiveis.length === 0 ? (
+              <Text style={[styles.lembreteSubtitulo, { marginTop: 8 }]}>
+                Nenhum calendário encontrado — confira se a permissão de Agenda está liberada nos Ajustes do celular.
+              </Text>
+            ) : (
+              calendariosDisponiveis.map((cal) => {
+                const ativo = calendarioEscolhidoId
+                  ? calendarioEscolhidoId === cal.id
+                  : false;
+                return (
+                  <TouchableOpacity
+                    key={cal.id}
+                    style={[styles.configOpcao, ativo && styles.configOpcaoAtiva, { marginTop: 8 }]}
+                    onPress={() => escolherCalendario(cal)}
+                  >
+                    <FontAwesome name="calendar" size={16} color={ativo ? COR.navy : COR.dourado} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.configOpcaoTexto}>{cal.title}</Text>
+                      {!!cal.source?.name && (
+                        <Text style={{ fontSize: 11, color: ativo ? COR.navy : COR.tintaSuave }}>
+                          {cal.source.name}
+                        </Text>
+                      )}
+                    </View>
+                    {ativo && <FontAwesome name="check-circle" size={18} color={COR.dourado} />}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            {calendarioEscolhidoId && (
+              <TouchableOpacity onPress={() => escolherCalendario({ id: null })} style={{ marginTop: 8 }}>
+                <Text style={[styles.verMais, { textAlign: 'left', paddingVertical: 4 }]}>
+                  Voltar pra escolha automática
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <Text style={[styles.configLabel, { marginTop: 18 }]}>App de email usado pela Evie</Text>
+            <Text style={styles.lembreteSubtitulo}>
+              Escolha qual aplicativo abre quando você toca no atalho "Email".
+            </Text>
+            {[
+              { chave: 'gmail', titulo: 'Gmail' },
+              { chave: 'outlook', titulo: 'Outlook' },
+              { chave: 'nativo', titulo: 'Mail (nativo do celular)' },
+            ].map((opcao) => {
+              const ativo = appEmailEscolhido === opcao.chave;
+              return (
+                <TouchableOpacity
+                  key={opcao.chave}
+                  style={[styles.configOpcao, ativo && styles.configOpcaoAtiva, { marginTop: 8 }]}
+                  onPress={() => escolherAppEmail(opcao.chave)}
+                >
+                  <FontAwesome name="envelope-o" size={16} color={ativo ? COR.navy : COR.dourado} />
+                  <Text style={styles.configOpcaoTexto}>{opcao.titulo}</Text>
+                  {ativo && <FontAwesome name="check-circle" size={18} color={COR.dourado} />}
                 </TouchableOpacity>
               );
             })}

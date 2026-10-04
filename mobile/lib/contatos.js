@@ -1,39 +1,8 @@
 import * as Contacts from 'expo-contacts/legacy';
+import { normalizarNumeroParaWhatsapp } from './telefone';
 
-// Mapa de país (código ISO de 2 letras, que o sistema operacional
-// costuma fornecer junto do contato) pro código de discagem
-// internacional (DDI). Cobre os países mais prováveis pros usuários
-// da Evie — fácil de estender se precisar de mais.
-const DDI_POR_PAIS = {
-  BR: '55',
-  US: '1',
-  CA: '1',
-  PT: '351',
-  AR: '54',
-  MX: '52',
-};
-
-// O link "wa.me" do WhatsApp só funciona com o número completo,
-// incluindo o código do país (DDI) — sem ele, o WhatsApp não acha o
-// contato e oferece "convidar pro WhatsApp" por engano, mesmo que a
-// pessoa já tenha WhatsApp. Essa função garante que o número final
-// sempre tenha o DDI, usando o país do próprio contato quando
-// disponível (dado que o sistema operacional já entrega), com o
-// Brasil como padrão quando não dá pra saber.
-export function normalizarNumeroParaWhatsapp(numero, codigoPaisContato) {
-  const apenasDigitos = (numero || '').replace(/\D/g, '');
-  if (!apenasDigitos) return '';
-
-  const ddi = DDI_POR_PAIS[(codigoPaisContato || '').toUpperCase()] || '55';
-
-  // Se o número já começa com o DDI certo (ex: já digitado como
-  // "5511987654321"), não duplica.
-  if (apenasDigitos.startsWith(ddi) && apenasDigitos.length > 11) {
-    return apenasDigitos;
-  }
-
-  return ddi + apenasDigitos;
-}
+// As regras de telefone (código do país pro WhatsApp, número pra discar)
+// ficam em telefone.js.
 
 // Remove acento e deixa minúsculo, pra comparar nomes sem se importar
 // com maiúscula/minúscula ou acentuação.
@@ -76,11 +45,17 @@ export async function buscarContatosPorNome(nome) {
   const encontrados = data
     .filter((c) => c.name && normalizarNome(c.name).includes(termo))
     .filter((c) => c.phoneNumbers && c.phoneNumbers.length > 0)
-    .map((c) => ({
-      id: c.id,
-      nome: c.name,
-      numero: normalizarNumeroParaWhatsapp(c.phoneNumbers[0].number, c.phoneNumbers[0].countryCode),
-    }));
+    .map((c) => {
+      const telefone = c.phoneNumbers[0];
+      return {
+        id: c.id,
+        nome: c.name,
+        // Como está na agenda: é o que aparece na tela e o que é discado.
+        numero: telefone.number || '',
+        // Com o código do país, só pro link do WhatsApp.
+        numeroWhatsapp: normalizarNumeroParaWhatsapp(telefone.number, telefone.countryCode),
+      };
+    });
 
   return { permitido: true, contatos: encontrados };
 }

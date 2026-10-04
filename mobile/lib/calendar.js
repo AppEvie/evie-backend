@@ -1,4 +1,5 @@
 import * as Calendar from 'expo-calendar/legacy';
+import { buscarCalendarioEscolhidoId } from './armazenamento';
 
 export async function pedirPermissaoAgenda() {
   const { status } = await Calendar.requestCalendarPermissionsAsync();
@@ -10,29 +11,36 @@ async function getCalendariosEditaveis() {
   return calendars.filter((c) => c.allowsModifications);
 }
 
-// Escolhe o calendário certo para escrever: prioriza um calendário
-// sincronizado com uma conta Google de verdade (source.type === 'com.google'
-// no Android), e só usa um calendário "local"/sem conta como último recurso.
-// Isso evita o bug de criar eventos num calendário que nunca aparece no
-// app do Google Agenda.
+// Lista os calendários disponíveis pra mostrar na tela de Configurações,
+// pra pessoa escolher manualmente qual quer usar — mais confiável do que
+// tentar adivinhar automaticamente, já que isso varia bastante entre
+// aparelhos e contas configuradas.
+export async function listarCalendariosDisponiveis() {
+  return getCalendariosEditaveis();
+}
+
+// Escolhe o calendário certo para escrever. Ordem de prioridade:
+// 1) O que a pessoa escolheu manualmente em Configurações, se ainda existir
+// 2) Um calendário sincronizado com conta Google de verdade (Android)
+// 3) Qualquer calendário editável disponível, como último recurso
 async function getCalendarioParaEscrita() {
   const editaveis = await getCalendariosEditaveis();
-  console.log('[calendar] calendarios editaveis encontrados:', JSON.stringify(
-    editaveis.map((c) => ({ titulo: c.title, tipoConta: c.source?.type, isPrimary: c.isPrimary }))
-  ));
   if (editaveis.length === 0) {
     throw new Error('Nenhum calendário editável encontrado no dispositivo.');
+  }
+
+  const idEscolhidoManualmente = await buscarCalendarioEscolhidoId();
+  if (idEscolhidoManualmente) {
+    const escolhidoManual = editaveis.find((c) => c.id === idEscolhidoManualmente);
+    if (escolhidoManual) return escolhidoManual;
+    // Se o calendário salvo não existe mais (foi removido, conta
+    // desconectada), cai pro comportamento automático abaixo.
   }
 
   const doGoogle = editaveis.filter((c) => c.source?.type === 'com.google');
   const candidatos = doGoogle.length > 0 ? doGoogle : editaveis;
 
-  const escolhido =
-    candidatos.find((c) => c.isPrimary) || candidatos[0];
-
-  console.log('[calendar] calendario escolhido pra escrever:', escolhido?.title, '| conta:', escolhido?.source?.type);
-
-  return escolhido;
+  return candidatos.find((c) => c.isPrimary) || candidatos[0];
 }
 
 export function normalizar(texto) {
@@ -59,74 +67,27 @@ function montarRegraDeRecorrencia(recorrencia) {
   return { frequency };
 }
 
-// Acha a agenda "Profissional" se ela já existe, ou cria uma nova
-// (dentro da mesma conta Google do calendário principal) se ainda não
-// existir. Assim dá pra separar compromissos pessoais de profissionais
-// por cor, direto no Google Agenda.
-export async function getOuCriarCalendarioProfissional() {
-  const editaveis = await getCalendariosEditaveis();
-  const existente = editaveis.find((c) => normalizar(c.title) === 'profissional');
-  if (existente) {
-    console.log('[calendar] agenda Profissional já existia:', existente.id);
-    return existente;
-  }
-
-  const principal = await getCalendarioParaEscrita();
-  const fonte = principal.source;
-
-  console.log('[calendar] agenda Profissional não existe ainda, tentando criar na fonte:', JSON.stringify(fonte));
-
-  try {
-    const novoId = await Calendar.createCalendarAsync({
-      title: 'Profissional',
-      color: '#C9A227',
-      entityType: Calendar.EntityTypes.EVENT,
-      sourceId: fonte.id,
-      source: fonte,
-      name: 'Profissional',
-      ownerAccount: fonte.name,
-      accessLevel: 'owner',
-    });
-
-    const atualizados = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-    const criado = atualizados.find((c) => c.id === novoId);
-
-    if (!criado) {
-      // Alguns Androids "aceitam" o pedido mas não criam de verdade
-      // (só o app oficial do Google Agenda tem essa permissão) — sem
-      // erro nenhum, só não aparece na lista depois. Trata isso como
-      // se tivesse falhado mesmo.
-      console.log('[calendar] tentativa de criar Profissional não resultou em agenda encontrável.');
-      throw new Error('AGENDA_PROFISSIONAL_INDISPONIVEL');
-    }
-
-    console.log('[calendar] agenda Profissional criada de verdade — id:', novoId);
-    return criado;
-  } catch (e) {
-    console.log('[calendar] não foi possível criar a agenda Profissional automaticamente:', e?.message || e);
-    throw new Error('AGENDA_PROFISSIONAL_INDISPONIVEL');
-  }
-}
-
-// Cria o evento direto no calendário do sistema. Se houver uma conta
-// Google configurada no aparelho, o evento é criado nela e sincroniza
-// sozinho com o Google Agenda.
+// Cria o evento direto no calendário do sistema — sempre no mesmo
+// calendário (escolhido manualmente pela pessoa, ou detectado
+// automaticamente). Quando o compromisso é profissional, adiciona uma
+// marcação no título só pra diferenciar dentro do próprio calendário
+// nativo — não cria nenhum calendário separado, evitando confusão.
 export async function criarEventoNaAgenda(agenda, categoria) {
-  const calendario =
-    categoria === 'profissional'
-      ? await getOuCriarCalendarioProfissional()
-      : await getCalendarioParaEscrita();
+  const calendario = await getCalendarioParaEscrita();
   const [ano, mes, dia] = agenda.data.split('-').map(Number);
   const [hh, mm] = (agenda.hora || '09:00').split(':').map(Number);
   const inicio = new Date(ano, mes - 1, dia, hh, mm);
   const fim = new Date(inicio.getTime() + (agenda.duracao_min || 60) * 60000);
   const recurrenceRule = montarRegraDeRecorrencia(agenda.recorrencia);
 
+  const tituloBase = agenda.titulo || 'Evento';
+  const tituloParaCalendario = categoria === 'profissional' ? `${tituloBase} (Profissional)` : tituloBase;
+
   console.log('[calendar] agenda.recorrencia recebida do backend:', agenda.recorrencia);
   console.log('[calendar] recurrenceRule montada:', JSON.stringify(recurrenceRule));
 
   const eventId = await Calendar.createEventAsync(calendario.id, {
-    title: agenda.titulo || 'Evento',
+    title: tituloParaCalendario,
     startDate: inicio,
     endDate: fim,
     location: agenda.local || '',
@@ -146,10 +107,21 @@ export async function criarEventoNaAgenda(agenda, categoria) {
     }
   }
 
+  // No Android, contas Google têm source.type === 'com.google'. No iOS,
+  // esse mesmo tipo não existe — contas Google aparecem lá com outro tipo
+  // (geralmente CalDAV), mas o nome da fonte costuma trazer "gmail" ou
+  // "google". Checando os dois jeitos, o aviso de "não achei uma conta
+  // Google" fica correto nas duas plataformas.
+  const nomeFonteNormalizado = (calendario.source?.name || '').toLowerCase();
+  const ehGoogle =
+    calendario.source?.type === 'com.google' ||
+    nomeFonteNormalizado.includes('gmail') ||
+    nomeFonteNormalizado.includes('google');
+
   return {
     eventId,
     calendarioNome: calendario.title,
-    ehGoogle: calendario.source?.type === 'com.google',
+    ehGoogle,
     inicioSalvo: inicio,
   };
 }
@@ -173,7 +145,11 @@ export async function buscarProximosEventos(dias = 14) {
   return eventos
     .map((e) => ({
       id: e.id,
-      titulo: e.title,
+      // Remove a marcação "(Profissional)" do título aqui — ela só deve
+      // aparecer no calendário nativo (onde ajuda a diferenciar), nunca
+      // dentro do próprio app da Evie (cartões, briefing, resposta
+      // falada), pra não parecer repetitivo ou confuso.
+      titulo: (e.title || '').replace(/\s*\(Profissional\)\s*$/i, ''),
       local: e.location,
       inicio: new Date(e.startDate),
       fim: new Date(e.endDate),
