@@ -57,6 +57,7 @@ import { listarDocumentos, salvarDocumento, removerDocumento, salvarImagemPerman
 import { salvarImagemSomaPermanente, salvarSoma, listarSomas, removerSoma, atualizarSoma, listarPastasMae, criarPastaMae, removerPastaMae, renomearSoma, renomearPastaMae } from '../lib/somas';
 import { chaveNome, formatarReais, montarEstrutura } from '../lib/somasEstrutura';
 import { dataLocalISO, lembreteVenceAteHoje, textoQuandoLembrete } from '../lib/lembretes';
+import { montarDespesa, rotuloItens } from '../lib/despesa';
 import { salvarImagemSintesePermanente, salvarSintese, listarSinteses, removerSintese } from '../lib/sinteses';
 import { salvarPost, listarPosts, removerPost } from '../lib/posts';
 import { carregarEntradas, salvarEntradas } from '../lib/entradas';
@@ -512,6 +513,10 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   const [nomeNovaMae, setNomeNovaMae] = useState('');
   const [renomeando, setRenomeando] = useState(null); // null, 'mae' ou 'soma'
   const [textoRenomear, setTextoRenomear] = useState('');
+  const [digitandoNaForm, setDigitandoNaForm] = useState(false);
+  const [digitandoNoCartao, setDigitandoNoCartao] = useState(false);
+  const [despesaDescricao, setDespesaDescricao] = useState('');
+  const [despesaValor, setDespesaValor] = useState('');
 
   useEffect(() => {
     acordarServidor();
@@ -1100,12 +1105,16 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     }
     try {
       const arquivosPermanentes = await Promise.all(
-        arquivosSoma.map(async (a) => ({
-          uri: await salvarImagemSomaPermanente(a.uri),
-          valor: a.valor,
-          tipoDocumento: a.tipoDocumento,
-          ehPdf: !!a.ehPdf,
-        }))
+        arquivosSoma.map(async (a) =>
+          a.manual
+            ? { uri: null, valor: a.valor, tipoDocumento: a.tipoDocumento, ehPdf: false, manual: true }
+            : {
+                uri: await salvarImagemSomaPermanente(a.uri),
+                valor: a.valor,
+                tipoDocumento: a.tipoDocumento,
+                ehPdf: !!a.ehPdf,
+              }
+        )
       );
       const novaSoma = {
         id: String(Date.now()),
@@ -1261,7 +1270,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     const notas = (soma.arquivos || []).length;
     const mensagem = notas === 0
       ? `"${soma.pasta}" será apagada.`
-      : `"${soma.pasta}" e ${notas === 1 ? 'a nota' : `as ${notas} notas`} dentro dela serão apagadas, junto com o total.`;
+      : `"${soma.pasta}" será apagada, junto com ${notas === 1 ? 'o item' : `os ${notas} itens`} e o total.`;
     Alert.alert(soma.pastaMae ? 'Excluir subpasta?' : 'Excluir pasta?', mensagem, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Excluir', style: 'destructive', onPress: () => excluirSomaGuardada(soma.id) },
@@ -1273,7 +1282,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     const n = mae.subpastas.length;
     const mensagem = n === 0
       ? `"${mae.nome}" será apagado.`
-      : `Vai apagar "${mae.nome}" com todo o conteúdo (${n} subpasta${n === 1 ? '' : 's'}, ${mae.notas} nota${mae.notas === 1 ? '' : 's'}). Não dá pra desfazer.`;
+      : `Vai apagar "${mae.nome}" com todo o conteúdo (${n} subpasta${n === 1 ? '' : 's'}, ${rotuloItens(mae.notas)}). Não dá pra desfazer.`;
     Alert.alert(`Excluir ${ROTULO_MAE.baixo}?`, mensagem, [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -1351,6 +1360,72 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
   useEffect(() => {
     setRenomeando(null);
   }, [somaAbertaDetalhe?.id, pastaMaeAberta]);
+
+  // ---- Despesa digitada à mão (ex: Aluguel, R$ 5000) ----
+  function avisoDespesaInvalida(erro) {
+    if (erro === 'descricao') {
+      Alert.alert('Falta a descrição', 'Escreva do que é a despesa, por exemplo "Aluguel".');
+    } else {
+      Alert.alert('Valor inválido', 'Digite o valor em reais, por exemplo 5000 ou 1.250,90.');
+    }
+  }
+
+  function limparDespesaDigitada() {
+    setDespesaDescricao('');
+    setDespesaValor('');
+  }
+
+  // Na tela "Nova subpasta": a despesa entra na lista junto com as fotos, e
+  // só é guardada de vez quando a pessoa toca em Salvar.
+  function incluirDespesaNaForm() {
+    const r = montarDespesa(despesaDescricao, despesaValor);
+    if (r.erro) {
+      avisoDespesaInvalida(r.erro);
+      return;
+    }
+    setArquivosSoma((prev) => [...prev, { ...r.item, chave: Date.now() + Math.random() }]);
+    limparDespesaDigitada();
+    setDigitandoNaForm(false);
+  }
+
+  // Numa subpasta já guardada: a despesa entra na hora e o total é atualizado.
+  async function incluirDespesaNoCartao() {
+    if (!somaAbertaDetalhe) return;
+    const r = montarDespesa(despesaDescricao, despesaValor);
+    if (r.erro) {
+      avisoDespesaInvalida(r.erro);
+      return;
+    }
+    try {
+      const novosArquivos = [...(somaAbertaDetalhe.arquivos || []), r.item];
+      const novoTotal = novosArquivos.reduce((acc, a) => acc + parseValorBR(a.valor), 0);
+      const listaAtualizada = await atualizarSoma(somaAbertaDetalhe.id, {
+        arquivos: novosArquivos,
+        total: novoTotal,
+      });
+      setSomasGuardadas(listaAtualizada);
+      setSomaAbertaDetalhe({ ...somaAbertaDetalhe, arquivos: novosArquivos, total: novoTotal });
+      limparDespesaDigitada();
+      setDigitandoNoCartao(false);
+      mostrar(`Despesa incluída. Novo total: R$ ${formatarReais(novoTotal)}.`);
+    } catch (e) {
+      console.error('[soma] erro ao incluir despesa:', e);
+      Alert.alert('Não consegui incluir', 'Tenta de novo em instantinho.');
+    }
+  }
+
+  // Ao sair de uma tela, fecha o formulário de despesa e limpa o que foi digitado.
+  useEffect(() => {
+    setDigitandoNoCartao(false);
+    setDespesaDescricao('');
+    setDespesaValor('');
+  }, [somaAbertaDetalhe?.id, pastaMaeAberta]);
+
+  useEffect(() => {
+    setDigitandoNaForm(false);
+    setDespesaDescricao('');
+    setDespesaValor('');
+  }, [modalSomaAberto]);
 
   // Depois de guardar o documento, sempre pergunta se quer um lembrete —
   // se ela achou uma data de vencimento, oferece ela pronta; senão, deixa
@@ -2301,6 +2376,44 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
     [entradas]
   );
 
+  // Formulário de despesa digitada. Aparece dentro da própria tela (e não
+  // numa janela por cima), porque no iPhone duas janelas sobrepostas dão problema.
+  const renderFormDespesa = (aoIncluir, aoCancelar) => (
+    <View style={{ marginTop: 14 }}>
+      <Text style={styles.configLabel}>Descrição</Text>
+      <TextInput
+        style={styles.configInput}
+        value={despesaDescricao}
+        onChangeText={setDespesaDescricao}
+        placeholder="Ex: Aluguel"
+        placeholderTextColor={COR.tintaSuave}
+        returnKeyType="next"
+        maxLength={60}
+      />
+      <Text style={[styles.configLabel, { marginTop: 12 }]}>Valor (R$)</Text>
+      <TextInput
+        style={styles.configInput}
+        value={despesaValor}
+        onChangeText={setDespesaValor}
+        placeholder="Ex: 5000"
+        placeholderTextColor={COR.tintaSuave}
+        keyboardType="decimal-pad"
+        returnKeyType="done"
+        onSubmitEditing={aoIncluir}
+      />
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+        <TouchableOpacity style={styles.somaBotaoDescartar} onPress={aoCancelar}>
+          <Text style={styles.somaBotaoDescartarTexto}>Cancelar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={{ flex: 1 }} onPress={aoIncluir}>
+          <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoSalvar}>
+            <Text style={styles.somaBotaoSalvarTexto}>Incluir</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <LinearGradient colors={['#E9E9E6', '#DCE3EC']} style={styles.container}>
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
@@ -2545,7 +2658,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
             </View>
             <Text style={styles.mesaTitulo} numberOfLines={1}>Controle financeiro</Text>
           </View>
-          <Text style={[styles.linhaSub, { marginBottom: 12 }]}>Organize e some suas notas e faturas por pasta</Text>
+          <Text style={[styles.linhaSub, { marginBottom: 12 }]}>Organize e some suas despesas, notas e faturas por pasta</Text>
           <TouchableOpacity activeOpacity={0.8} onPress={abrirModalNovaMae}>
             <LinearGradient colors={['#164A87', '#0A2C56']} style={styles.somaBotaoNovoLargo}>
               <FontAwesome name="plus" size={12} color="#FFFFFF" />
@@ -2569,7 +2682,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   <Text style={styles.linhaSub}>
                     {item.tipo === 'mae'
                       ? `${item.subpastas.length} subpasta${item.subpastas.length === 1 ? '' : 's'}`
-                      : `${item.notas} nota${item.notas === 1 ? '' : 's'}`}
+                      : rotuloItens(item.notas)}
                     {' · total R$ '}{formatarReais(item.total)}
                   </Text>
                 </View>
@@ -3565,18 +3678,35 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}
           >
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20 + MARGEM_INFERIOR_SEGURA }}>
+          <ScrollView
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20 + MARGEM_INFERIOR_SEGURA }}
+          >
             <TouchableOpacity style={styles.somaAdicionarBtn} onPress={abrirEscolhaFotoSoma}>
               <FontAwesome name="camera" size={16} color={COR.dourado} />
               <Text style={styles.somaAdicionarBtnTexto}>Adicionar nota/fatura</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.somaAdicionarBtn} onPress={() => setDigitandoNaForm(true)}>
+              <FontAwesome name="pencil" size={16} color={COR.dourado} />
+              <Text style={styles.somaAdicionarBtnTexto}>Digitar despesa</Text>
+            </TouchableOpacity>
+            {digitandoNaForm &&
+              renderFormDespesa(incluirDespesaNaForm, () => {
+                limparDespesaDigitada();
+                setDigitandoNaForm(false);
+              })}
 
             {arquivosSoma.length === 0 ? (
-              <Text style={[styles.vazio, { marginTop: 16 }]}>Nenhum arquivo adicionado ainda.</Text>
+              <Text style={[styles.vazio, { marginTop: 16 }]}>Nenhum item adicionado ainda.</Text>
             ) : (
               arquivosSoma.map((a) => (
                 <View key={a.chave} style={styles.linha}>
-                  {a.ehPdf ? (
+                  {a.manual ? (
+                    <View style={[styles.docMiniatura, { backgroundColor: '#E6EEF7', alignItems: 'center', justifyContent: 'center' }]}>
+                      <FontAwesome name="money" size={20} color={COR.dourado} />
+                    </View>
+                  ) : a.ehPdf ? (
                     <View style={[styles.docMiniatura, styles.pdfMiniaturaBox]}>
                       <FontAwesome name="file-pdf-o" size={20} color={COR.ferrugem} />
                     </View>
@@ -3588,7 +3718,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                       {a.processando ? 'Lendo...' : a.tipoDocumento}
                     </Text>
                     <Text style={styles.linhaSub}>
-                      {a.processando ? '' : `R$ ${a.valor}`}
+                      {a.processando ? '' : `R$ ${formatarReais(parseValorBR(a.valor))}`}
                     </Text>
                   </View>
                   {a.processando ? (
@@ -3719,15 +3849,26 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   )}
                 </View>
 
+                {digitandoNoCartao ? (
+                  renderFormDespesa(incluirDespesaNoCartao, () => {
+                    limparDespesaDigitada();
+                    setDigitandoNoCartao(false);
+                  })
+                ) : (
+                <>
                 <ScrollView style={{ maxHeight: 380 }}>
                   {(somaAbertaDetalhe.arquivos || []).length === 0 && (
                     <Text style={[styles.vazio, { marginVertical: 14 }]}>
-                      Nenhuma nota aqui ainda. Toque em Adicionar pra incluir a primeira.
+                      Nenhum item aqui ainda. Digite uma despesa ou adicione uma nota ou fatura.
                     </Text>
                   )}
                   {(somaAbertaDetalhe.arquivos || []).map((a, i) => (
                     <View key={i} style={styles.linha}>
-                      {a.ehPdf ? (
+                      {a.manual ? (
+                        <View style={[styles.docMiniatura, { backgroundColor: '#E6EEF7', alignItems: 'center', justifyContent: 'center' }]}>
+                          <FontAwesome name="money" size={20} color={COR.dourado} />
+                        </View>
+                      ) : a.ehPdf ? (
                         <View style={[styles.docMiniatura, styles.pdfMiniaturaBox]}>
                           <FontAwesome name="file-pdf-o" size={20} color={COR.ferrugem} />
                         </View>
@@ -3736,7 +3877,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                       )}
                       <View style={{ flex: 1 }}>
                         <Text style={styles.linhaTitulo} numberOfLines={1}>{a.tipoDocumento}</Text>
-                        <Text style={styles.linhaSub}>R$ {a.valor}</Text>
+                        <Text style={styles.linhaSub}>R$ {formatarReais(parseValorBR(a.valor))}</Text>
                       </View>
                       <TouchableOpacity
                         onPress={() => removerArquivoDeSomaSalva(i)}
@@ -3755,6 +3896,25 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                     R$ {formatarReais(somaAbertaDetalhe.total)}
                   </Text>
                 </LinearGradient>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setDigitandoNoCartao(true)}
+                  style={{
+                    marginTop: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    borderWidth: 1,
+                    borderColor: '#164A87',
+                    borderRadius: 12,
+                    paddingVertical: 11,
+                  }}
+                >
+                  <FontAwesome name="pencil" size={13} color="#164A87" />
+                  <Text style={{ color: '#164A87', fontSize: 13, fontFamily: 'Poppins_600SemiBold' }}>Digitar despesa</Text>
+                </TouchableOpacity>
 
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
                   <TouchableOpacity
@@ -3777,6 +3937,8 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
+                </>
+                )}
               </>
             ) : pastaMaeAtual ? (
               <>
@@ -3828,7 +3990,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                   <Text style={styles.somaTotalValor}>R$ {formatarReais(pastaMaeAtual.total)}</Text>
                   <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11.5, marginTop: 2 }}>
                     {pastaMaeAtual.subpastas.length} subpasta{pastaMaeAtual.subpastas.length === 1 ? '' : 's'}
-                    {' · '}{pastaMaeAtual.notas} nota{pastaMaeAtual.notas === 1 ? '' : 's'}
+                    {' · '}{rotuloItens(pastaMaeAtual.notas)}
                   </Text>
                 </LinearGradient>
 
@@ -3848,7 +4010,7 @@ export default function HomeScreen({ nomeUsuario, personalidade, onAtualizarNome
                         <FontAwesome name="folder" size={13} color={COR.dourado} />
                         <View style={{ flex: 1, marginLeft: 8 }}>
                           <Text style={styles.linhaTitulo} numberOfLines={1}>{sub.nome}</Text>
-                          <Text style={styles.linhaSub}>{sub.notas} nota{sub.notas === 1 ? '' : 's'}</Text>
+                          <Text style={styles.linhaSub}>{rotuloItens(sub.notas)}</Text>
                         </View>
                         <Text style={styles.linhaTitulo}>R$ {formatarReais(sub.total)}</Text>
                         <TouchableOpacity
